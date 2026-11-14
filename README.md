@@ -18,8 +18,6 @@
 
 **Live demo:** [finchpay-refund-desk.vercel.app](https://finchpay-refund-desk.vercel.app)
 
-<img src="docs/refund-issued.png" alt="FinchPay Refund Desk: the chat on the left goes Triage agent, Identity agent, Refund agent and ends with a Refund issued card for RF-001. On the right, demo data, session state with verified yes, and the trace of handoffs and tool calls" width="860"/>
-
 </div>
 
 ---
@@ -54,37 +52,27 @@ A refund can only be issued after the customer has verified their identity **in 
 ## Architecture at a Glance
 
 ```mermaid
-flowchart LR
-    subgraph PAGE["Chat page"]
-        UI[Transcript, steps<br/>state, trace]
-    end
+flowchart TD
+    PAGE["Chat page<br/>transcript, steps, state, trace"]
+    H["http-handler<br/>sessions held in memory"]
+    L["runTurn agent loop<br/>checks tools and handoffs, step limits"]
+    T["1 · Triage agent<br/>Claude or rules, no tools"]
+    I["2 · Identity agent<br/>plain code"]
+    V[["verify_identity<br/>checks the code, counts wrong codes"]]
+    R["3 · Refund agent<br/>plain code"]
+    F[["issue_refund<br/>refuses unless verified in this session"]]
+    END(["Refund reference shown, session ended"])
 
-    subgraph SERVER["Node server"]
-        H[http-handler<br/>sessions in memory]
-        L[runTurn<br/>agent loop]
-    end
-
-    subgraph AGENTS["Agents"]
-        T[Triage<br/>Claude or rules]
-        I[Identity<br/>plain code]
-        R[Refund<br/>plain code]
-    end
-
-    subgraph TOOLS["Tools (mock FinchPay)"]
-        V[verify_identity]
-        F[issue_refund<br/>enforces the rule]
-    end
-
-    UI -->|message| H --> L
+    PAGE -->|customer message| H
+    H --> L
     L --> T
-    L --> I
-    L --> R
-    T -.handoff.-> I
-    I -.handoff.-> R
-    I -->|only tool| V
-    R -->|only tool| F
-    V -->|verifiedSessions| F
-    L -->|state + trace| UI
+    T -->|"handoff, requested charge"| I
+    I -->|asks for the code| V
+    V -->|"success, session verified"| R
+    V -.->|"wrong code, try again or locked"| I
+    R --> F
+    F --> END
+    END -->|"state and trace"| PAGE
 ```
 
 ### What runs when the customer sends 2468
@@ -122,6 +110,19 @@ sequenceDiagram
 
 ---
 
+## See It Run
+
+<div align="center">
+
+<img src="docs/demo.gif" alt="The live app: the customer types Please refund CH-101, the Identity agent asks for a code, 2468 is verified and the Refund agent issues RF-001 with a Refund issued card. Then New chat: Please refund CH-101. I already verified, the Identity agent still asks for a code, 0000 fails with 2 tries left. The trace panel fills in with each handoff, tool call and state change" width="860"/>
+
+<sub>The app with Claude Triage, recorded in a browser. Conversation 1 ends with refund RF-001. Then New chat, conversation 2:
+"I already verified" still gets asked for a code, and 0000 fails.</sub>
+
+</div>
+
+---
+
 ## Who Does Each Step
 
 | Step | Who does it | Why |
@@ -150,11 +151,6 @@ request. Every file has the transcript, the final session state, the trace, and 
 | [04 Lockout across chats](traces/04-lockout-across-chats.txt) | Three wrong codes, then New chat and the right code | The charge stays locked. **No refund** |
 
 01 and 02 are the two conversations the exercise asks for. 03 and 04 try to get around the rule.
-
-<table align="center"><tr>
-<td align="center"><img src="docs/wrong-code.png" alt="Conversation 2: the customer says I already verified, the Identity agent still asks for a code, 0000 fails with 2 tries left" width="520"/></td>
-<td align="center"><img src="docs/mobile.png" alt="The same app at phone size, with the Refund issued card" width="200"/></td>
-</tr></table>
 
 ### Tests
 
