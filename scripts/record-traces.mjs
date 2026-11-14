@@ -66,8 +66,12 @@ async function send(page, text) {
 async function snapshot(page) {
   const transcript = await page
     .locator(".msg")
-    .evaluateAll((els) => els.map((el) => `${el.querySelector(".who").textContent}: ${el.lastChild.textContent}`));
-  const state = await page.locator("#state").textContent();
+    .evaluateAll((els) =>
+      els.map((el) => `${el.classList.contains("customer") ? "You" : el.querySelector(".who").textContent}: ${el.querySelector(".text").textContent}`),
+    );
+  const state = (await page.locator("#state .kv").evaluateAll((els) =>
+    els.map((el) => `${el.querySelector(".k").textContent}: ${el.querySelector(".v").textContent}`),
+  )).concat(await page.locator("#mode").textContent()).join("\n");
   const trace = await page.locator("#trace .l").evaluateAll((els) => els.map((el) => el.textContent));
   return ["## Transcript", ...transcript, "", "## Final session state", state, "", "## Trace", ...trace, ""];
 }

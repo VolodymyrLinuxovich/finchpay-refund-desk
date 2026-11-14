@@ -4,79 +4,226 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FinchPay Refund Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb; --accent: #1f6f5c; --agent: #eef2f6; }
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #14202b;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --brand: #0f766e;
+    --brand-ink: #ffffff;
+    --brand-soft: #e6f4f2;
+    --agent: #f1f5f9;
+    --good: #15803d;
+    --good-soft: #e8f6ec;
+    --bad: #b91c1c;
+    --bad-soft: #fdecec;
+    --warn: #b45309;
+    --violet: #6d28d9;
+    --blue: #1d4ed8;
+    --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1117; --card: #121a22; --text: #e6edf3; --muted: #8b9aab; --line: #223040;
+      --brand: #2dd4bf; --brand-ink: #062a26; --brand-soft: #0f2c2a; --agent: #1a2430;
+      --good: #4ade80; --good-soft: #10261a; --bad: #f87171; --bad-soft: #2a1414; --warn: #fbbf24;
+      --violet: #a78bfa; --blue: #60a5fa; --shadow: none;
+    }
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
-  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--line); }
-  header h1 { font-size: 17px; margin: 0; }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 16px; max-width: 1200px; margin: 0 auto; }
-  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; min-height: 0; }
-  section h2 { font-size: 13px; margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 600; }
-  #transcript { flex: 1; overflow-y: auto; padding: 14px; height: 60vh; display: flex; flex-direction: column; gap: 10px; }
-  .msg { max-width: 85%; padding: 8px 12px; border-radius: 10px; white-space: pre-wrap; }
-  .msg.customer { align-self: flex-end; background: var(--accent); color: #fff; }
-  .msg.agent { align-self: flex-start; background: var(--agent); }
-  .msg .who { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
-  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
-  input[type=text] { flex: 1; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
-  button { padding: 9px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
-  button.secondary { background: #fff; color: var(--accent); }
-  button:disabled { opacity: .5; cursor: default; }
-  #state { padding: 10px 14px; font: 12px/1.6 ui-monospace, Menlo, monospace; border-bottom: 1px solid var(--line); }
-  #trace { flex: 1; overflow-y: auto; margin: 0; padding: 10px 14px; height: 50vh; font: 12px/1.55 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
-  #trace .l { display: block; padding: 1px 0 1px 8px; border-left: 3px solid transparent; }
-  #trace .handoff { border-color: #7c3aed; color: #5b21b6; font-weight: 600; }
-  #trace .tool { border-color: #2563eb; color: #1e40af; }
-  #trace .ok { border-color: #16a34a; color: #166534; }
-  #trace .fail { border-color: #dc2626; color: #991b1b; }
-  #trace .state { border-color: #d97706; color: #92400e; }
-  #trace .wait { border-color: #6b7280; color: #374151; font-style: italic; }
-  #trace .end { border-color: #111827; color: #111827; font-weight: 600; }
-  #trace .customer { color: #6b7280; }
-  .legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
-  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-  .status { font-size: 13px; color: var(--muted); padding: 0 14px 10px; }
+  html, body { margin: 0; }
+  body { font: 15px/1.5 Inter, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+  button { font: inherit; cursor: pointer; }
+
+  /* Top bar */
+  .top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .top-inner { max-width: 1180px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+  .brand small { font-weight: 500; color: var(--muted); font-size: 14px; }
+  .top .spacer { flex: 1; }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 8px 14px; border-radius: 999px; font-weight: 500; font-size: 14px; }
+  .btn:hover { border-color: var(--brand); }
+  .btn.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  .btn.primary:hover { filter: brightness(1.05); }
+
+  /* Layout */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 32px; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start; }
+  @media (max-width: 960px) { .wrap { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+
+  /* Steps */
+  .steps { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .step { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .step .dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--line); font-size: 12px; font-weight: 600; background: var(--card); }
+  .step.active { color: var(--text); }
+  .step.active .dot { border-color: var(--brand); color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
+  .step.done .dot { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+  .step.failed .dot { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .bar { flex: 1; height: 2px; background: var(--line); min-width: 12px; border-radius: 2px; }
+  .bar.done { background: var(--brand); }
+  @media (max-width: 520px) { .step span.label { display: none; } .step.active span.label { display: inline; } }
+
+  /* Chat */
+  .chat { display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 520px; }
+  @media (max-width: 960px) { .chat { height: auto; min-height: 0; } }
+  #transcript { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 14px; }
+  @media (max-width: 960px) { #transcript { max-height: 62vh; min-height: 300px; } }
+  .msg { display: flex; gap: 10px; max-width: 88%; }
+  .msg.new, .outcome.new { animation: rise .2s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .msg.customer { align-self: flex-end; flex-direction: row-reverse; }
+  .avatar { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+  .msg.customer .avatar { display: none; }
+  .bubble { padding: 10px 14px; border-radius: 16px; background: var(--agent); border-top-left-radius: 4px; }
+  .msg.customer .bubble { background: var(--brand); color: var(--brand-ink); border-radius: 16px; border-top-right-radius: 4px; }
+  .who { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; font-weight: 500; }
+  .msg.customer .who { display: none; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .typing { display: none; align-items: center; gap: 10px; }
+  .typing.show { display: flex; }
+  .typing .bubble { display: flex; gap: 4px; padding: 14px; }
+  .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite ease-in-out; }
+  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+  /* Outcome cards */
+  .outcome { align-self: stretch; border-radius: 14px; padding: 16px; border: 1px solid var(--line); display: grid; gap: 10px; }
+  .outcome.good { background: var(--good-soft); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+  .outcome.bad { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 30%, transparent); }
+  .outcome h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .outcome.good h3 { color: var(--good); } .outcome.bad h3 { color: var(--bad); }
+  .outcome dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 14px; }
+  .outcome dt { color: var(--muted); } .outcome dd { margin: 0; font-weight: 600; }
+  .outcome p { margin: 0; font-size: 14px; color: var(--muted); }
+
+  /* Composer */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 10px; }
+  .chips:empty { display: none; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+  .chip:hover { border-color: var(--brand); color: var(--brand); }
+  .chips-label { width: 100%; font-size: 12px; color: var(--muted); }
+  form { display: flex; gap: 8px; padding: 12px 14px 14px; border-top: 1px solid var(--line); }
+  #message { flex: 1; min-width: 0; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; font: inherit; background: var(--bg); color: var(--text); }
+  #message:focus { outline: 2px solid var(--brand-soft); border-color: var(--brand); }
+  #send { border: 0; border-radius: 12px; padding: 0 18px; background: var(--brand); color: var(--brand-ink); font-weight: 600; }
+  #send:disabled, #message:disabled { opacity: .5; cursor: default; }
+  #status { padding: 0 18px 8px; font-size: 13px; color: var(--muted); }
+  #status:empty { display: none; }
+
+  /* Side panel */
+  .side { display: grid; gap: 16px; }
+  .side h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .side .head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .side .head > span { font-size: 12px; color: var(--muted); }
+  .demo { padding: 14px 16px; font-size: 14px; display: grid; gap: 8px; }
+  .demo b { font-weight: 600; }
+  .demo .row { display: flex; justify-content: space-between; gap: 8px; }
+  .demo .row span:first-child { color: var(--muted); }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--brand); font-weight: 500; font-size: 13px; justify-self: start; text-align: left; }
+  .linkbtn:hover { text-decoration: underline; }
+
+  #state { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 16px; }
+  .kv { background: var(--bg); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+  .kv .k { font-size: 11px; color: var(--muted); }
+  .kv .v { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .v.yes { color: var(--good); } .v.no { color: var(--bad); }
+
+  #trace { list-style: none; margin: 0; padding: 12px 16px 16px; max-height: 40vh; overflow-y: auto; display: grid; gap: 2px; }
+  @media (max-width: 960px) { #trace { max-height: none; } }
+  #trace .l { position: relative; padding: 4px 0 4px 18px; font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; color: var(--muted); }
+  #trace .l::before { content: ""; position: absolute; left: 2px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  #trace .l::after { content: ""; position: absolute; left: 5.5px; top: 20px; bottom: -6px; width: 1px; background: var(--line); }
+  #trace .l:last-child::after { display: none; }
+  #trace .handoff { color: var(--violet); font-weight: 600; } #trace .handoff::before { background: var(--violet); }
+  #trace .tool { color: var(--blue); } #trace .tool::before { background: var(--blue); }
+  #trace .ok { color: var(--good); } #trace .ok::before { background: var(--good); }
+  #trace .fail { color: var(--bad); } #trace .fail::before { background: var(--bad); }
+  #trace .state { color: var(--warn); } #trace .state::before { background: var(--warn); }
+  #trace .wait { font-style: italic; } #trace .wait::before { background: var(--muted); }
+  #trace .end { color: var(--text); font-weight: 600; } #trace .end::before { background: var(--text); }
+  #trace .customer { color: var(--text); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 10px 16px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+  details.trace-card summary { list-style: none; cursor: pointer; }
+  details.trace-card summary::-webkit-details-marker { display: none; }
+  details.trace-card .chev { display: inline-block; vertical-align: -1px; margin-left: 4px; transition: transform .15s; }
+  details.trace-card[open] .chev { transform: rotate(180deg); }
 </style>
 </head>
 <body>
-<header>
-  <h1>FinchPay Refund Desk</h1>
-  <div style="display:flex;gap:8px">
-    <button id="reset-demo" class="secondary" type="button" title="Clears mock refunds and code lockouts">Reset demo data</button>
-    <button id="new-chat" type="button">New chat</button>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="var(--brand)"/><path d="M7 17c3-6 8-9 14-9-2 2-3 4-3 6 0 3-2 6-6 6-2 0-4-1-5-3z" fill="var(--brand-ink)"/><circle cx="17.5" cy="11.5" r="1.2" fill="var(--brand)"/></svg>
+      FinchPay <small>Refund help</small>
+    </div>
+    <div class="spacer"></div>
+    <button id="new-chat" class="btn primary" type="button">New chat</button>
   </div>
 </header>
-<main>
-  <section>
-    <h2>Chat</h2>
+
+<main class="wrap">
+  <section class="card chat" aria-label="Chat">
+    <div class="steps" id="steps">
+      <div class="step" data-step="triage"><span class="dot">1</span><span class="label">Charge</span></div>
+      <div class="bar"></div>
+      <div class="step" data-step="identity"><span class="dot">2</span><span class="label">Verify identity</span></div>
+      <div class="bar"></div>
+      <div class="step" data-step="refund"><span class="dot">3</span><span class="label">Refund</span></div>
+    </div>
     <div id="transcript" aria-live="polite"></div>
-    <div class="status" id="status"></div>
+    <div id="status" role="status"></div>
+    <div class="chips" id="chips"></div>
     <form id="composer">
       <input id="message" type="text" autocomplete="off" placeholder="Type a message" aria-label="Message">
       <button id="send" type="submit">Send</button>
     </form>
   </section>
-  <section>
-    <h2>Session state</h2>
-    <div id="state"></div>
-    <h2>Trace</h2>
-    <pre id="trace"></pre>
-    <div class="legend">
-      <span><i style="background:#7c3aed"></i>handoff</span>
-      <span><i style="background:#2563eb"></i>tool call</span>
-      <span><i style="background:#16a34a"></i>success</span>
-      <span><i style="background:#dc2626"></i>failure or blocked</span>
-      <span><i style="background:#d97706"></i>state change</span>
-      <span><i style="background:#6b7280"></i>waiting</span>
-      <span><i style="background:#111827"></i>ended</span>
+
+  <aside class="side">
+    <div class="card">
+      <div class="head"><h2>Demo data</h2><span>all mocked, in memory</span></div>
+      <div class="demo">
+        <div class="row"><span>Charge</span><b>CH-101 · $25.00</b></div>
+        <div class="row"><span>Valid code</span><b>2468</b></div>
+        <div class="row"><span>Wrong codes before lock</span><b>3</b></div>
+        <button id="reset-demo" class="linkbtn" type="button">Reset demo data (clears refunds and locks)</button>
+      </div>
     </div>
-  </section>
+
+    <div class="card">
+      <div class="head"><h2>Session state</h2><span id="mode"></span></div>
+      <div id="state"></div>
+    </div>
+
+    <details class="card trace-card" open>
+      <summary class="head"><h2>Under the hood</h2><span>handoffs, tool calls, state <svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></summary>
+      <ol id="trace"></ol>
+      <div class="legend">
+        <span><i style="background:var(--violet)"></i>handoff</span>
+        <span><i style="background:var(--blue)"></i>tool call</span>
+        <span><i style="background:var(--good)"></i>success</span>
+        <span><i style="background:var(--bad)"></i>failure or blocked</span>
+        <span><i style="background:var(--warn)"></i>state change</span>
+        <span><i style="background:var(--muted)"></i>waiting</span>
+        <span><i style="background:var(--text)"></i>ended</span>
+      </div>
+    </details>
+  </aside>
 </main>
+
 <script>
-  const ROLE = { triage: "Triage", identity: "Identity", refund: "Refund" };
+  const ROLE = { triage: "Triage agent", identity: "Identity agent", refund: "Refund agent" };
+  const ORDER = ["triage", "identity", "refund"];
+  const BIRD = '<svg width="16" height="16" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 18c3-7 9-11 17-11-2 2-4 5-4 8 0 3-2 7-7 7-3 0-5-1-6-4z" fill="currentColor"/></svg>';
   let sessionId = null;
+  let busy = false;
+  let shownMessages = 0; // messages already on screen, so only new ones animate
   const $ = (id) => document.getElementById(id);
 
   function kind(line) {
@@ -91,42 +238,155 @@
     return "";
   }
 
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function messageNode(m) {
+    const row = el("div", "msg " + m.from);
+    const av = el("div", "avatar");
+    av.innerHTML = BIRD;
+    const bubble = el("div", "bubble");
+    bubble.append(el("span", "who", "FinchPay · " + (ROLE[m.role] || m.role)), el("span", "text", m.text));
+    row.append(av, bubble);
+    return row;
+  }
+
+  function outcomeNode(s, lastText) {
+    if (s.status !== "ended") return null;
+    if (s.refundReference) {
+      const box = el("div", "outcome good");
+      box.innerHTML = '<h3>✓ Refund issued</h3><dl><dt>Reference</dt><dd></dd><dt>Charge</dt><dd></dd><dt>Amount</dt><dd>$25.00</dd></dl><p>The money usually reaches your account in 3 to 5 business days.</p>';
+      const dds = box.querySelectorAll("dd");
+      dds[0].textContent = s.refundReference;
+      dds[1].textContent = s.requestedCharge;
+      return box;
+    }
+    const box = el("div", "outcome bad");
+    const why = /locked/.test(lastText)
+      ? "Verification is locked for this charge after too many wrong codes."
+      : /already been refunded/.test(lastText) ? "This charge was already refunded." : "This conversation has ended.";
+    box.append(el("h3", null, "No refund issued"), el("p", null, why));
+    return box;
+  }
+
+  function typingNode() {
+    const row = el("div", "typing");
+    row.id = "typing";
+    const av = el("div", "avatar");
+    av.innerHTML = BIRD;
+    const b = el("div", "bubble");
+    b.append(el("i"), el("i"), el("i"));
+    row.append(av, b);
+    return row;
+  }
+
+  function renderSteps(s) {
+    const idx = ORDER.indexOf(s.currentRole);
+    const failedEnd = s.status === "ended" && !s.refundReference;
+    document.querySelectorAll(".step").forEach((node, i) => {
+      node.className = "step";
+      const dot = node.querySelector(".dot");
+      dot.textContent = String(i + 1);
+      const done = i < idx || (s.refundReference && i === idx);
+      if (done) { node.classList.add("done"); dot.textContent = "✓"; }
+      else if (i === idx && failedEnd) { node.classList.add("failed"); dot.textContent = "!"; }
+      else if (i === idx) node.classList.add("active");
+    });
+    document.querySelectorAll(".bar").forEach((bar, i) => bar.classList.toggle("done", i < idx));
+  }
+
+  function renderChips(s) {
+    const box = $("chips");
+    box.replaceChildren();
+    if (s.status === "ended") {
+      const again = el("button", "chip", "Start a new chat");
+      again.type = "button";
+      again.onclick = newChat;
+      box.append(again);
+      return;
+    }
+    const options = s.currentRole === "triage"
+      ? ["Please refund CH-101.", "Please refund CH-101. I already verified."]
+      : s.currentRole === "identity" ? ["2468", "0000"] : [];
+    if (!options.length) return;
+    box.append(el("span", "chips-label", "Try one of these"));
+    for (const text of options) {
+      const chip = el("button", "chip", text);
+      chip.type = "button";
+      chip.onclick = () => send(text);
+      box.append(chip);
+    }
+  }
+
+  function renderState(s) {
+    const items = [
+      ["Current agent", ROLE[s.currentRole] || s.currentRole],
+      ["Status", s.status],
+      ["Requested charge", s.requestedCharge ?? "none yet"],
+      ["Verified", s.verified ? "yes" : "no", s.verified ? "yes" : "no"],
+      ["Refund reference", s.refundReference ?? "none"],
+      ["Steps used", String(s.totalSteps)],
+    ];
+    $("state").replaceChildren(...items.map(([k, v, cls]) => {
+      const box = el("div", "kv");
+      box.append(el("div", "k", k), el("div", "v" + (cls ? " " + cls : ""), v));
+      return box;
+    }));
+    $("mode").textContent = s.triageMode === "claude" ? "Triage uses Claude" : "Triage uses rules";
+  }
+
   function render(data) {
     sessionId = data.sessionId;
-    const t = $("transcript");
-    t.replaceChildren(...data.messages.map((m) => {
-      const div = document.createElement("div");
-      div.className = "msg " + m.from;
-      const who = document.createElement("span");
-      who.className = "who";
-      who.textContent = m.from === "customer" ? "You" : "FinchPay · " + ROLE[m.role];
-      div.append(who, document.createTextNode(m.text));
-      return div;
-    }));
-    t.scrollTop = t.scrollHeight;
     const s = data.state;
-    $("state").textContent = Object.entries(s).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n");
-    $("state").style.whiteSpace = "pre";
+    const t = $("transcript");
+    if (data.sessionId !== render.lastSession) shownMessages = 0;
+    render.lastSession = data.sessionId;
+    const nodes = data.messages.map((m, i) => {
+      const node = messageNode(m);
+      // The customer's own message is already on screen from send(), so it does not animate again.
+      if (i >= shownMessages && m.from !== "customer") node.classList.add("new");
+      return node;
+    });
+    const hadOutcome = Boolean(t.querySelector(".outcome"));
+    shownMessages = data.messages.length;
+    const last = data.messages.filter((m) => m.from === "agent").at(-1);
+    const outcome = outcomeNode(s, last ? last.text : "");
+    if (outcome) {
+      if (!hadOutcome) outcome.classList.add("new");
+      nodes.push(outcome);
+    }
+    nodes.push(typingNode());
+    t.replaceChildren(...nodes);
+
     $("trace").replaceChildren(...data.trace.map((raw) => {
       const line = raw.replace(/^\S+\s+/, "");
-      const span = document.createElement("span");
-      span.className = "l " + kind(line);
-      span.textContent = line;
-      return span;
+      return el("li", "l " + kind(line), line);
     }));
     $("trace").scrollTop = $("trace").scrollHeight;
+
+    renderSteps(s);
+    renderChips(s);
+    renderState(s);
+    t.scrollTop = t.scrollHeight; // after chips render, so the last card is fully in view
+
     const ended = s.status === "ended";
     $("message").disabled = ended;
     $("send").disabled = ended;
-    $("status").textContent = ended ? "This conversation has ended. Press New chat to start again." : "";
-    if (!ended) $("message").focus();
+    $("message").placeholder = ended ? "This chat has ended" : s.currentRole === "identity" ? "Enter the 4 digit code" : "Type a message";
+    $("message").inputMode = s.currentRole === "identity" ? "numeric" : "text";
+    $("status").textContent = "";
+    if (!ended && window.matchMedia("(min-width: 961px)").matches) $("message").focus();
   }
 
   async function post(url, body) {
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
     const data = await res.json();
     if (res.status === 404 && url === "/api/chat") {
-      // The server lost this session (restart or a new Vercel instance). Start over cleanly.
+      // The server lost this session (restart or a new instance). Start over cleanly.
       await newChat();
       throw new Error(data.error);
     }
@@ -139,26 +399,37 @@
     render(await post("/api/session"));
   }
 
-  $("composer").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const message = $("message").value.trim();
-    if (!message) return;
+  async function send(text) {
+    const message = (text ?? $("message").value).trim();
+    if (!message || busy) return;
+    busy = true;
     $("message").value = "";
     $("send").disabled = true;
+    $("chips").replaceChildren();
+    // Show the customer's message and the typing dots right away.
+    const t = $("transcript");
+    t.insertBefore(messageNode({ from: "customer", text: message }), $("typing"));
+    $("typing").classList.add("show");
+    t.scrollTop = t.scrollHeight;
     try {
       render(await post("/api/chat", { sessionId, message }));
     } catch (err) {
+      $("typing").classList.remove("show");
       $("status").textContent = err.message;
       $("send").disabled = false;
+    } finally {
+      busy = false;
     }
-  });
+  }
 
+  $("composer").addEventListener("submit", (e) => { e.preventDefault(); send(); });
   $("new-chat").addEventListener("click", newChat);
   $("reset-demo").addEventListener("click", async () => {
     await post("/api/reset-demo");
     await newChat();
     $("status").textContent = "Demo data reset. CH-101 can be refunded again.";
   });
+  if (window.matchMedia("(max-width: 960px)").matches) document.querySelector("details.trace-card").open = false;
   newChat();
 </script>
 </body>
