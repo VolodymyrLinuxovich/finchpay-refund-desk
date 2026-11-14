@@ -154,14 +154,19 @@ request. Every file has the transcript, the final session state, the trace, and 
 
 ### Tests
 
-`npm test` runs **23 tests**, all passing:
+Four kinds of tests. Every run of `npm run test:log` is recorded in [TEST_LOG.md](TEST_LOG.md), one row per suite,
+with the full output kept in `test-results/`.
 
-- both required conversations, wrong codes, the lockout across chats and its expiry
-- `issue_refund` called directly without verification, and with a forged `session.verified`
-- a code inside the first message, two 4-digit numbers in one message, two charge IDs in one message
-- double refunds, unknown charges, the step limit, a blocked tool call, a blocked handoff that skips Identity
-- the Claude Triage path with a fake client: a charge Claude made up, a charge that only half matches what the customer
-  wrote, a clarifying question, a failed API call, and a prompt injection
+| Suite | Command | What it checks |
+|-------|---------|----------------|
+| **Unit** (23) | `npm test` | Agents, loop and tools: both conversations, wrong codes, lockout across chats, a forged `session.verified`, double refunds, the step limit, blocked tools and handoffs, Claude Triage with a fake client |
+| **HTTP** (12) | `npm test` | The real routes on a random port: sessions, both conversations, expired sessions, ended chats, broken JSON, long messages, reset |
+| **Randomized** (400 chats) | `npm test` | Random conversations, a third with **rogue agents** that fake verification or skip Identity. No refund may happen without a successful `verify_identity` first. Removing either check in `issue_refund` makes it fail |
+| **Browser** (7) | `npm run test:e2e` | Chromium clicks through the page: both conversations, New chat reset, suggested replies, the lockout card, trace colors, phone width |
+| **Live Claude eval** (20 cases) | `npm run eval:triage` | Real Claude on tricky and hostile first messages: missing dashes, two charges, fake "verified" claims, JSON and SYSTEM injections, other languages. The rule held in every run |
+
+The log already shows the eval doing its job. The first run failed on "Refund CH101 please", because Claude asked for
+the dash. The prompt was fixed and the next run passed 20 of 20. A later run with every case three times passed 60 of 60.
 
 ---
 
@@ -172,7 +177,10 @@ Needs Node 18 or newer.
 ```bash
 npm install
 npm start                                  # http://localhost:3000
-npm test                                   # 23 tests
+npm test                                   # unit, HTTP and randomized tests
+npm run test:e2e                           # browser tests (npx playwright install chromium-headless-shell)
+npm run test:log                           # all suites, appended to TEST_LOG.md
+npm run lint                               # ESLint and Prettier checks
 ```
 
 Triage uses Claude when `ANTHROPIC_API_KEY` is set, and rules otherwise. Identity and Refund are always plain code.
@@ -205,9 +213,13 @@ npm run traces
 | `src/session.js` | The shared session object and trace helpers |
 | `src/http-handler.js` | Routes: the page, `/api/session`, `/api/chat`, `/api/refunds`, `/api/reset-demo` |
 | `src/server.js` | Local server for `npm start`, and the Vercel entry point |
-| `public/index.html` | The chat page: steps, transcript, suggested replies, receipt card, session state, trace |
+| `public/index.html` | The chat page layout and styles |
+| `public/app.js` | The page script: sends messages, redraws transcript, steps, state and trace |
 | `scripts/record-traces.mjs` | Runs the four conversations through the page and saves them to `traces/` |
-| `test/` | `flow.test.js` for the loop, agents and tools; `llm-triage.test.js` for the Claude path |
+| `scripts/eval-triage.mjs` | The live Claude eval |
+| `scripts/test-log.mjs` | Runs every suite and appends the results to `TEST_LOG.md` |
+| `test/` | `flow.test.js` loop, agents and tools; `http.test.js` routes; `random.test.js` randomized and rogue agents; `llm-triage.test.js` Claude path |
+| `test-e2e/` | Browser tests with Playwright |
 
 ---
 
@@ -218,5 +230,5 @@ npm run traces
 - **Memory only.** Sessions, refunds and lockouts reset when the server restarts. On Vercel a new instance starts a new
   chat.
 - **One shared demo store.** Everyone on the live demo sees the same refunds and locks. That's why there is a reset button.
-- **The Claude path is tested with a fake client.** The traces cover a handful of real calls, not unusual input at scale.
+- **The live eval is small.** 20 cases, run up to 3 times each. The model is not deterministic, so a rare answer can still differ from the eval.
 - **Mock backend.** One charge, one fixed code, no real customer accounts or sent codes.
