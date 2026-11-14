@@ -1,5 +1,5 @@
 # Customer claims to be verified
-# Recorded 2026-11-14T01:38:21.134Z from the chat page
+# Recorded 2026-11-14T01:42:30.677Z from the chat page
 
 ## Transcript
 FinchPay · Triage: Hi, this is the FinchPay refund desk. Which charge would you like refunded?
@@ -15,13 +15,13 @@ requestedCharge: "CH-101"
 verified: false
 refundReference: null
 totalSteps: 4
-triageMode: "rules"
+triageMode: "claude"
 
 ## Trace
 new session (role Triage, verified false)
 Triage greets the customer, waiting for customer
 customer: "Please refund CH-101. I already verified."
-Triage (rules) read the request: {"chargeId":"CH-101","reply":""}
+Triage (Claude) read the request: {"chargeId":"CH-101","reply":""}
 session.requestedCharge = "CH-101" (was null)
 Triage -> Identity (requested charge CH-101)
 Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."

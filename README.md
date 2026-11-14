@@ -55,7 +55,7 @@ Each conversation was run through the chat page in a headless browser, starting 
 
 Each file has the transcript, the final session state, the trace and the refunds created during that conversation. The page shows the same trace live, color coded. The server prints it to the console and writes `traces/live/<session id>.log` locally (not committed).
 
-These traces were recorded with `TRIAGE_MODE=rules`. To record them again:
+These traces were recorded with Claude Triage on (`triageMode: "claude"` in each file). The live demo also runs Claude Triage. To record them again:
 
 ```bash
 npx playwright install chromium-headless-shell

@@ -29,7 +29,7 @@ On a wrong code I allow another try. After 3 wrong codes for a charge, that char
 
 The lockout is per charge and nothing ties a chat to a real customer. Anyone who knows a charge ID can send three wrong codes and lock it. The real customer then sees "Verification for this charge is locked... try again in 15 minutes" and cannot get their refund. I chose to block guessing at the cost of this. In a real system the customer would be logged in, so attempts would count per customer and device, and the code would be sent to them and expire. I would add a customer identity first, then key the lockout and the code on it.
 
-Other weak spots. Sessions, refunds and lockouts live in server memory. A restart or a new Vercel instance loses them, and the page starts a new chat. On the public demo everyone shares one store, which is why the page has a Reset demo data button. The traces were recorded with rule-based Triage because my API key had no credit. The Claude path is covered by tests with a fake client.
+Other weak spots. Sessions, refunds and lockouts live in server memory. A restart or a new Vercel instance loses them, and the page starts a new chat. On the public demo everyone shares one store, which is why the page has a Reset demo data button. The tests cover the Claude path with a fake client, so they do not show how the real model behaves on unusual input. The traces only cover five real calls.
 
 ## AI tools
 

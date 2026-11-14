@@ -1,5 +1,5 @@
 # Three wrong codes, then New chat with the right code
-# Recorded 2026-11-14T01:38:21.785Z from the chat page
+# Recorded 2026-11-14T01:42:35.143Z from the chat page
 
 ### First chat
 ## Transcript
@@ -20,13 +20,13 @@ requestedCharge: "CH-101"
 verified: false
 refundReference: null
 totalSteps: 8
-triageMode: "rules"
+triageMode: "claude"
 
 ## Trace
 new session (role Triage, verified false)
 Triage greets the customer, waiting for customer
 customer: "Please refund CH-101."
-Triage (rules) read the request: {"chargeId":"CH-101","reply":""}
+Triage (Claude) read the request: {"chargeId":"CH-101","reply":""}
 session.requestedCharge = "CH-101" (was null)
 Triage -> Identity (requested charge CH-101)
 Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."
@@ -63,13 +63,13 @@ requestedCharge: "CH-101"
 verified: false
 refundReference: null
 totalSteps: 4
-triageMode: "rules"
+triageMode: "claude"
 
 ## Trace
 new session (role Triage, verified false)
 Triage greets the customer, waiting for customer
 customer: "Please refund CH-101."
-Triage (rules) read the request: {"chargeId":"CH-101","reply":""}
+Triage (Claude) read the request: {"chargeId":"CH-101","reply":""}
 session.requestedCharge = "CH-101" (was null)
 Triage -> Identity (requested charge CH-101)
 Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."
