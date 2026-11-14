@@ -40,8 +40,8 @@ follows the rule around its one risky action.
 A refund can only be issued after the customer has verified their identity **in the current session**.
 
 - Saying **"I already verified"** changes nothing. Only a successful `verify_identity` result can mark a session verified.
-- **`issue_refund` checks twice** before it records anything: the session's `verified` flag, and the tool's own record
-  that `verify_identity` succeeded for this exact session id. Setting the flag by hand is not enough.
+- **`issue_refund` checks twice** before it records anything: the session's `verified` flag, and a receipt that
+  `verify_identity` signed for this exact session id. Setting the flag by hand is not enough.
 - **Wrong codes are counted per charge, not per chat.** After 3, the charge locks for 15 minutes, and New chat does not
   give fresh guesses.
 - **Each role can only use its own tools and hand off forward.** Triage has no tools and can only hand off to Identity,
@@ -54,7 +54,7 @@ A refund can only be issued after the customer has verified their identity **in 
 ```mermaid
 flowchart TD
     PAGE["Chat page<br/>transcript, steps, state, trace"]
-    H["http-handler<br/>sessions held in memory"]
+    H["http-handler<br/>session arrives as a signed token"]
     L["runTurn agent loop<br/>checks tools and handoffs, step limits"]
     T["1 · Triage agent<br/>Claude or rules, no tools"]
     I["2 · Identity agent<br/>plain code"]
@@ -91,14 +91,14 @@ sequenceDiagram
     I-->>L: call verify_identity(2468, CH-101)
     L->>L: Identity may use this tool? yes
     L->>V: run tool
-    V-->>L: ok, session id recorded
+    V-->>L: ok, signed receipt written into the session
     L->>I: tool result
     I-->>L: session.verified = true, hand off to Refund
     L->>L: Identity → Refund allowed? yes
     L->>R: handoff event
     R-->>L: call issue_refund(CH-101)
     L->>F: run tool
-    F->>F: verified flag AND tool record? yes
+    F->>F: verified flag AND valid receipt? yes
     F-->>L: RF-001
     L->>R: tool result
     R-->>L: end with the reference
@@ -160,7 +160,7 @@ with the full output kept in `test-results/`.
 | Suite | Command | What it checks |
 |-------|---------|----------------|
 | **Unit** (23) | `npm test` | Agents, loop and tools: both conversations, wrong codes, lockout across chats, a forged `session.verified`, double refunds, the step limit, blocked tools and handoffs, Claude Triage with a fake client |
-| **HTTP** (12) | `npm test` | The real routes on a random port: sessions, both conversations, expired sessions, ended chats, broken JSON, long messages, reset |
+| **HTTP** (15) | `npm test` | The real routes on a random port: both conversations, an edited token that claims verified, a chat moving to a second server, resume after reload, ended chats, broken JSON, long messages, reset |
 | **Randomized** (400 chats) | `npm test` | Random conversations, a third with **rogue agents** that fake verification or skip Identity. No refund may happen without a successful `verify_identity` first. Removing either check in `issue_refund` makes it fail |
 | **Browser** (7) | `npm run test:e2e` | Chromium clicks through the page: both conversations, New chat reset, suggested replies, the lockout card, trace colors, phone width |
 | **Live Claude eval** (20 cases) | `npm run eval:triage` | Real Claude on tricky and hostile first messages: missing dashes, two charges, fake "verified" claims, JSON and SYSTEM injections, other languages. The rule held in every run |
@@ -211,14 +211,15 @@ npm run traces
 | `src/llm-triage.js` | The Claude call Triage makes: structured JSON, no tools, capped calls per process |
 | `src/tools.js` | `verify_identity` and `issue_refund`, mock charges, refunds and lockouts. **The refund rule lives in `issueRefund`** |
 | `src/session.js` | The shared session object and trace helpers |
-| `src/http-handler.js` | Routes: the page, `/api/session`, `/api/chat`, `/api/refunds`, `/api/reset-demo` |
+| `src/signing.js` | Signs the session token the page carries, and the receipt `verify_identity` writes |
+| `src/http-handler.js` | Routes: the page, `/api/session`, `/api/chat`, `/api/resume`, `/api/refunds`, `/api/reset-demo` |
 | `src/server.js` | Local server for `npm start`, and the Vercel entry point |
 | `public/index.html` | The chat page layout and styles: header with steps, chat column, Agent trace drawer |
 | `public/app.js` | The page script: sends messages, redraws transcript, steps, state and trace |
 | `scripts/record-traces.mjs` | Runs the four conversations through the page and saves them to `traces/` |
 | `scripts/eval-triage.mjs` | The live Claude eval |
 | `scripts/test-log.mjs` | Runs every suite and appends the results to `TEST_LOG.md` |
-| `test/` | `flow.test.js` loop, agents and tools; `http.test.js` routes; `random.test.js` randomized and rogue agents; `llm-triage.test.js` Claude path |
+| `test/` | `flow.test.js` loop, agents and tools; `http.test.js` routes and signed tokens; `random.test.js` randomized and rogue agents; `llm-triage.test.js` Claude path |
 | `test-e2e/` | Browser tests with Playwright |
 
 ---
@@ -227,8 +228,9 @@ npm run traces
 
 - **Anyone who knows a charge ID can lock it.** Three wrong codes block the real customer for 15 minutes. Nothing ties a
   chat to a real customer yet.
-- **Memory only.** Sessions, refunds and lockouts reset when the server restarts. On Vercel a new instance starts a new
-  chat.
+- **Chats travel with the browser, the rest is memory.** Each chat is a signed token the page sends back, so any server
+  instance can continue it, and a reload reopens it. Refunds and lockouts live in server memory, so a new Vercel
+  instance starts with none, like a restart.
 - **One shared demo store.** Everyone on the live demo sees the same refunds and locks. That's why there is a reset button.
 - **The live eval is small.** 20 cases, run up to 3 times each. The model is not deterministic, so a rare answer can still differ from the eval.
 - **Mock backend.** One charge, one fixed code, no real customer accounts or sent codes.

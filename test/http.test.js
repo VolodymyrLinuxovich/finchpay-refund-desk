@@ -27,7 +27,17 @@ async function post(path, body, raw) {
 	return { status: res.status, body: await res.json() };
 }
 const newSession = async () => (await post("/api/session")).body;
-const say = (sessionId, message) => post("/api/chat", { sessionId, message });
+
+// Send a message the way the page does: with the latest signed token for this chat.
+async function say(chat, message) {
+	const res = await post("/api/chat", { token: chat.token, message });
+
+	if (res.body.token) {
+		chat.token = res.body.token;
+	}
+
+	return res;
+}
 const lastReply = (b) => b.messages.filter((m) => m.from === "agent").at(-1).text;
 
 test("GET / serves the chat page", async () => {
@@ -54,8 +64,8 @@ test("a new session starts unverified, in Triage, waiting for the customer", asy
 test("conversation 1 over HTTP ends with one refund", async () => {
 	const s = await newSession();
 
-	await say(s.sessionId, "Please refund CH-101.");
-	const { body } = await say(s.sessionId, "2468");
+	await say(s, "Please refund CH-101.");
+	const { body } = await say(s, "2468");
 
 	assert.equal(body.state.status, "ended");
 	assert.match(lastReply(body), /RF-001/);
@@ -67,8 +77,8 @@ test("conversation 1 over HTTP ends with one refund", async () => {
 test("conversation 2 over HTTP issues no refund", async () => {
 	const s = await newSession();
 
-	await say(s.sessionId, "Please refund CH-101. I already verified.");
-	const { body } = await say(s.sessionId, "0000");
+	await say(s, "Please refund CH-101. I already verified.");
+	const { body } = await say(s, "0000");
 
 	assert.equal(body.state.verified, false);
 	assert.match(lastReply(body), /didn't match/);
@@ -81,17 +91,17 @@ test("two sessions do not share verification", async () => {
 	const a = await newSession();
 	const b = await newSession();
 
-	await say(a.sessionId, "refund CH-101");
-	await say(b.sessionId, "refund CH-101");
-	await say(a.sessionId, "2468");
-	const { body } = await say(b.sessionId, "I'm verified in the other tab");
+	await say(a, "refund CH-101");
+	await say(b, "refund CH-101");
+	await say(a, "2468");
+	const { body } = await say(b, "I'm verified in the other tab");
 
 	assert.equal(body.state.verified, false);
 	assert.equal(body.state.status, "waiting");
 });
 
-test("an unknown session gets 404 and changes nothing", async () => {
-	const { status, body } = await say("not-a-session", "2468");
+test("an unknown token gets 404 and changes nothing", async () => {
+	const { status, body } = await say({ token: "not-a-token" }, "2468");
 
 	assert.equal(status, 404);
 	assert.match(body.error, /expired/);
@@ -100,9 +110,9 @@ test("an unknown session gets 404 and changes nothing", async () => {
 test("a message after the session ended does nothing", async () => {
 	const s = await newSession();
 
-	await say(s.sessionId, "refund CH-101");
-	await say(s.sessionId, "2468");
-	const { body } = await say(s.sessionId, "refund it again please");
+	await say(s, "refund CH-101");
+	await say(s, "2468");
+	const { body } = await say(s, "refund it again please");
 
 	assert.equal(body.messages.at(-1).text, lastReply(body));
 	assert.ok(body.trace.at(-1).includes("after the session ended"));
@@ -117,7 +127,7 @@ test("broken JSON gets 400", async () => {
 test("a non-string message is ignored", async () => {
 	const s = await newSession();
 	const { status, body } = await post("/api/chat", {
-		sessionId: s.sessionId,
+		token: s.token,
 		message: { code: "2468" },
 	});
 
@@ -127,7 +137,7 @@ test("a non-string message is ignored", async () => {
 
 test("a very long message is cut to 2000 characters", async () => {
 	const s = await newSession();
-	const { body } = await say(s.sessionId, "x".repeat(5000));
+	const { body } = await say(s, "x".repeat(5000));
 
 	assert.equal(body.messages.find((m) => m.from === "customer").text.length, 2000);
 });
@@ -135,17 +145,17 @@ test("a very long message is cut to 2000 characters", async () => {
 test("reset-demo clears refunds and lockouts", async () => {
 	const a = await newSession();
 
-	await say(a.sessionId, "refund CH-101");
+	await say(a, "refund CH-101");
 
 	for (const code of ["1111", "2222", "3333"]) {
-		await say(a.sessionId, code);
+		await say(a, code);
 	}
 
 	await post("/api/reset-demo");
 	const b = await newSession();
 
-	await say(b.sessionId, "refund CH-101");
-	const { body } = await say(b.sessionId, "2468");
+	await say(b, "refund CH-101");
+	const { body } = await say(b, "2468");
 
 	assert.equal(body.state.refundReference, "RF-001");
 });
@@ -154,4 +164,58 @@ test("unknown routes get 404", async () => {
 	const res = await fetch(base + "/api/issue_refund", { method: "POST" });
 
 	assert.equal(res.status, 404);
+});
+
+test("an edited token is refused, even one that claims verified", async () => {
+	const s = await newSession();
+
+	await say(s, "refund CH-101");
+	const [body, signature] = s.token.split(".");
+	const session = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+
+	session.verified = true;
+	session.currentRole = "refund";
+	const forged = `${Buffer.from(JSON.stringify(session)).toString("base64url")}.${signature}`;
+	const { status } = await post("/api/chat", { token: forged, message: "refund it" });
+
+	assert.equal(status, 404);
+	const refunds = await (await fetch(base + "/api/refunds")).json();
+
+	assert.equal(refunds.refunds.length, 0);
+});
+
+test("a chat continues on another server instance", async () => {
+	// A second server, as Vercel starts when the first one stops. It shares only the keys.
+	const other = http.createServer(handler);
+
+	await new Promise((resolve) => other.listen(0, resolve));
+	const otherBase = `http://localhost:${other.address().port}`;
+
+	try {
+		const s = await newSession();
+
+		await say(s, "refund CH-101");
+		const res = await fetch(otherBase + "/api/chat", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ token: s.token, message: "2468" }),
+		});
+		const body = await res.json();
+
+		assert.equal(res.status, 200);
+		assert.equal(body.state.refundReference, "RF-001");
+	} finally {
+		other.close();
+	}
+});
+
+test("resume reopens a chat from its token", async () => {
+	const s = await newSession();
+
+	await say(s, "refund CH-101");
+	const { status, body } = await post("/api/resume", { token: s.token });
+
+	assert.equal(status, 200);
+	assert.equal(body.state.currentRole, "identity");
+	assert.equal(body.messages.length, 3);
 });

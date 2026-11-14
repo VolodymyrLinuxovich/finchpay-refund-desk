@@ -11,13 +11,12 @@ const ROLE = {
 const ORDER = ["triage", "identity", "refund"];
 const BIRD =
 	'<svg width="16" height="16" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 18c3-7 9-11 17-11-2 2-4 5-4 8 0 3-2 7-7 7-3 0-5-1-6-4z" fill="currentColor"/></svg>';
-let sessionId = null;
+let token = null; // the signed session from the server, sent back with every message
 let busy = false;
 let shownMessages = 0; // messages already on screen, so only new ones animate
-let shownTraceLines = 0; // trace lines already drawn, to know when new ones arrive
 const $ = (id) => document.getElementById(id);
 
-// Pick a color for a trace line from its wording (see the legend).
+// Pick a color for a trace line from its wording.
 const TRACE_KINDS = [
 	[/blocked|rejected|failed|failure/, "fail"],
 	[/ -> /, "handoff"],
@@ -178,22 +177,22 @@ function renderChips(s) {
 	}
 }
 
-// The session state tiles in the side panel.
+// The session state, one line of facts at the top of the trace drawer.
 function renderState(s) {
 	const items = [
-		["Current agent", ROLE[s.currentRole] || s.currentRole],
-		["Status", s.status],
-		["Requested charge", s.requestedCharge ?? "none yet"],
+		["Agent", (ROLE[s.currentRole] || s.currentRole).replace(" agent", "")],
 		["Verified", s.verified ? "yes" : "no", s.verified ? "yes" : "no"],
-		["Refund reference", s.refundReference ?? "none"],
-		["Steps used", String(s.totalSteps)],
+		["Charge", s.requestedCharge ?? "none yet"],
+		["Reference", s.refundReference ?? "none"],
+		["Status", s.status],
+		["Steps", String(s.totalSteps)],
 	];
 
 	$("state").replaceChildren(
 		...items.map(([k, v, cls]) => {
 			const box = el("div", "kv");
 
-			box.append(el("div", "k", k), el("div", "v" + (cls ? " " + cls : ""), v));
+			box.append(el("span", "k", k), el("span", "v" + (cls ? " " + cls : ""), v));
 
 			return box;
 		}),
@@ -203,7 +202,8 @@ function renderState(s) {
 
 // Redraw everything from one server response.
 function render(data) {
-	sessionId = data.sessionId;
+	token = data.token;
+	remember(token);
 	const s = data.state;
 	const t = $("transcript");
 
@@ -243,13 +243,6 @@ function render(data) {
 
 	thread.append(...nodes);
 	t.replaceChildren(thread);
-
-	// New trace lines while the drawer is closed make the button's dot pulse.
-	if (data.trace.length > shownTraceLines && $("drawer").hidden && shownTraceLines > 0) {
-		pulse();
-	}
-
-	shownTraceLines = data.trace.length;
 
 	$("trace").replaceChildren(
 		...data.trace.map((raw) => {
@@ -304,6 +297,38 @@ async function post(url, body) {
 	return data;
 }
 
+// Keep the token for this tab, so a reload (phones do this a lot) reopens the chat.
+function remember(value) {
+	try {
+		sessionStorage.setItem("finchpay-chat", value);
+	} catch {
+		// Storage can be blocked (private mode). The chat still works until a reload.
+	}
+}
+
+// On load: reopen this tab's chat if there is one, otherwise start a new one.
+async function start() {
+	let saved = null;
+
+	try {
+		saved = sessionStorage.getItem("finchpay-chat");
+	} catch {
+		saved = null;
+	}
+
+	if (saved) {
+		try {
+			render(await post("/api/resume", { token: saved }));
+
+			return;
+		} catch {
+			// Expired or from an older deployment. Fall through to a new chat.
+		}
+	}
+
+	await newChat();
+}
+
 // New chat: the server makes a fresh, unverified session.
 async function newChat() {
 	$("message").value = "";
@@ -333,7 +358,7 @@ async function send(text) {
 	t.scrollTop = t.scrollHeight;
 
 	try {
-		render(await post("/api/chat", { sessionId, message }));
+		render(await post("/api/chat", { token, message }));
 	} catch (err) {
 		$("typing").classList.remove("show");
 		$("status").textContent = err.message;
@@ -347,7 +372,6 @@ async function send(text) {
 function setDrawer(open) {
 	$("drawer").hidden = !open;
 	$("trace-toggle").setAttribute("aria-pressed", String(open));
-	$("pulse").classList.remove("on");
 
 	if (open) {
 		$("trace").scrollTop = $("trace").scrollHeight;
@@ -358,15 +382,6 @@ function setDrawer(open) {
 	} catch {
 		// Storage can be blocked (private mode). The drawer still works.
 	}
-}
-
-// Restart the dot animation on the Agent trace button.
-function pulse() {
-	const dot = $("pulse");
-
-	dot.classList.remove("on");
-	void dot.offsetWidth; // forces a reflow so the animation plays again
-	dot.classList.add("on");
 }
 
 // Wire up the buttons, then open the first chat.
@@ -396,4 +411,4 @@ try {
 	setDrawer(false);
 }
 
-newChat();
+start();

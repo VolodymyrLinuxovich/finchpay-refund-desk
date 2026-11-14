@@ -5,11 +5,13 @@ import { randomUUID } from "node:crypto";
 export function createSession() {
 	return {
 		id: randomUUID(),
+		createdAt: Date.now(),
 		currentRole: "triage", // triage | identity | refund
 		status: "active", // active | waiting | ended
 		requestedCharge: null, // set by Triage, e.g. "CH-101"
 		verified: false, // set by Identity, only after verify_identity succeeds
 		refundReference: null,
+		verificationReceipt: null, // written only by verify_identity, see src/signing.js
 		totalSteps: 0,
 		messages: [], // [{ from: "customer" | "agent", role?, text }]
 		trace: [], // human readable lines, see traceLine()

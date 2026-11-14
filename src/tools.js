@@ -1,3 +1,5 @@
+import { verificationReceipt, hasValidReceipt } from "./signing.js";
+
 // Mock FinchPay backend. Everything lives in memory and resets when the server restarts.
 
 const CHARGES = {
@@ -15,10 +17,10 @@ const VALID_CODE = "2468";
 export const MAX_VERIFY_ATTEMPTS = 3;
 export const LOCK_MINUTES = 15;
 
-// Tool-owned record of which sessions passed verify_identity.
-// issue_refund checks this as well as session.verified, so flipping the flag
-// on the session object (by a bug in an agent, or an LLM agent) is not enough.
-const verifiedSessions = new Set();
+// The tool's own proof of a correct code is a signed receipt it writes into the
+// session (see src/signing.js). issue_refund checks it as well as session.verified,
+// so flipping the flag (by a bug in an agent, or an LLM agent) is not enough.
+// A receipt, not an in-memory list, so the proof survives a new server instance.
 
 // Wrong code count per charge. Kept here, not on the session, so New chat
 // does not give a caller fresh guesses.
@@ -33,7 +35,7 @@ export function getCharge(chargeId) {
 
 // verify_identity: checks the code for the requested charge and returns success or failure.
 // It never changes the session itself. The Identity agent sets session.verified
-// from a successful result, and verifiedSessions is the tool's own proof of it.
+// from a successful result, and the receipt is the tool's own proof of it.
 export function verifyIdentity(session, { code, chargeId }, now = Date.now()) {
 	const entry = failedAttempts.get(chargeId) ?? { count: 0, lockedUntil: 0 };
 
@@ -52,10 +54,10 @@ export function verifyIdentity(session, { code, chargeId }, now = Date.now()) {
 		entry.lockedUntil = 0;
 	}
 
-	// Right code: clear the wrong code count and record the proof for issue_refund.
+	// Right code: clear the wrong code count and write the receipt issue_refund checks.
 	if (typeof code === "string" && code === VALID_CODE) {
 		failedAttempts.delete(chargeId);
-		verifiedSessions.add(session.id);
+		session.verificationReceipt = verificationReceipt(session.id);
 
 		return { ok: true };
 	}
@@ -75,9 +77,9 @@ export function verifyIdentity(session, { code, chargeId }, now = Date.now()) {
 
 // issue_refund: the refund rule is enforced here, before anything is recorded.
 export function issueRefund(session, { chargeId }) {
-	// The rule. Both must hold: the session says it is verified, and this tool
-	// layer saw verify_identity succeed for this exact session id.
-	if (session.verified !== true || !verifiedSessions.has(session.id)) {
+	// The rule. Both must hold: the session says it is verified, and it carries a
+	// receipt that verify_identity signed for this exact session id.
+	if (session.verified !== true || !hasValidReceipt(session)) {
 		return { ok: false, error: "identity_not_verified" };
 	}
 
@@ -117,9 +119,8 @@ export function listRefunds() {
 	return refunds.map((r) => ({ ...r }));
 }
 
-// Clears refunds, verifications and lockouts. Used by tests and the Reset demo data button.
+// Clears refunds and lockouts. Used by tests and the Reset demo data button.
 export function resetStore() {
 	refunds.length = 0;
-	verifiedSessions.clear();
 	failedAttempts.clear();
 }

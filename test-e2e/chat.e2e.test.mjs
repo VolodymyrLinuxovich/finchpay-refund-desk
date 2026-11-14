@@ -70,7 +70,7 @@ test("conversation 2: 'I already verified' then 0000 shows no refund and keeps a
 	await send("0000");
 	assert.match(await lastAgent(), /didn't match.*2 tries left/s);
 	assert.equal(await state("Verified"), "no");
-	assert.equal(await state("Refund reference"), "none");
+	assert.equal(await state("Reference"), "none");
 	assert.equal(await page.locator(".outcome").count(), 0);
 	const trace = await page.locator("#trace").textContent();
 
@@ -83,7 +83,7 @@ test("New chat clears the transcript and starts a fresh, unverified session", as
 	await page.click("#new-chat");
 	await page.waitForFunction(() => document.querySelectorAll(".msg").length === 1);
 	assert.equal(await state("Verified"), "no");
-	assert.equal(await state("Requested charge"), "none yet");
+	assert.equal(await state("Charge"), "none yet");
 	assert.equal(await state("Status"), "waiting");
 	assert.ok(await page.isEnabled("#message"));
 	assert.equal(await page.locator(".outcome").count(), 0);
@@ -107,7 +107,7 @@ test("three wrong codes show a red 'No refund issued' card", async () => {
 	assert.equal(await page.locator(".step.failed").count(), 1);
 });
 
-test("the trace panel shows handoffs, tool calls and state changes", async () => {
+test("the trace drawer shows handoffs, tool calls and state changes", async () => {
 	await send("Please refund CH-101.");
 	await send("2468");
 	const kinds = await page.locator("#trace .l").evaluateAll((els) => els.map((e) => e.className));

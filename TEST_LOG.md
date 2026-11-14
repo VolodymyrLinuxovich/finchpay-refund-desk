@@ -26,3 +26,6 @@ Every run of `npm run test:log` adds one row per suite. Full output of each run 
 | 11/13/26, 7:57 PM PT | c769b16+changes | unit + http + random | pass | 36 | 0 | 0.4s |  | new layout, with the funded key | [output](test-results/2026-11-14T03-57-12/unit-http-random.txt) |
 | 11/13/26, 7:57 PM PT | c769b16+changes | browser e2e | pass | 7 | 0 | 3.2s |  | new layout, with the funded key | [output](test-results/2026-11-14T03-57-12/browser-e2e.txt) |
 | 11/13/26, 7:57 PM PT | c769b16+changes | live Claude eval | pass | 20 | 0 | 37.7s | rule held 20/20 | new layout, with the funded key | [output](test-results/2026-11-14T03-57-12/live-Claude-eval.txt) |
+| 11/13/26, 8:36 PM PT | 7f7a37d+changes | unit + http + random | pass | 39 | 0 | 0.4s |  | signed session tokens and receipts; simpler trace drawer | [output](test-results/2026-11-14T04-36-37/unit-http-random.txt) |
+| 11/13/26, 8:36 PM PT | 7f7a37d+changes | browser e2e | pass | 7 | 0 | 3.5s |  | signed session tokens and receipts; simpler trace drawer | [output](test-results/2026-11-14T04-36-37/browser-e2e.txt) |
+| 11/13/26, 8:36 PM PT | 7f7a37d+changes | live Claude eval | pass | 20 | 0 | 36.9s | rule held 20/20 | signed session tokens and receipts; simpler trace drawer | [output](test-results/2026-11-14T04-36-37/live-Claude-eval.txt) |

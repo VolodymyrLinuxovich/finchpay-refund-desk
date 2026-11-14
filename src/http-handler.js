@@ -5,20 +5,23 @@ import { createSession, traceLine } from "./session.js";
 import { runTurn } from "./loop.js";
 import { listRefunds, resetStore } from "./tools.js";
 import { llmTriageEnabled } from "./llm-triage.js";
+import { signSession, readSession } from "./signing.js";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC_DIR = path.join(ROOT, "public");
 const TRACE_DIR = path.join(ROOT, "traces", "live");
-const MAX_BODY = 10_000;
-const MAX_SESSIONS = 1000;
+const MAX_BODY = 200_000; // a signed session carries the transcript and trace
 
-// Sessions live in server memory. The browser only holds the session id.
-const sessions = new Map();
+// The server keeps no chats in memory. Each response carries the whole session as a
+// signed token (src/signing.js) and the page sends it back with the next message.
+// So any server instance can continue a chat, which matters on Vercel, where
+// instances stop when idle and new ones start without the old memory.
 
-// What the page gets back after every request: the session id, the state the
-// side panel shows, the transcript and the trace. Never the tool-owned records.
+// What the page gets back after every request: the signed session token, the state
+// the trace drawer shows, the transcript and the trace.
 function view(session) {
 	return {
+		token: signSession(session),
 		sessionId: session.id,
 		state: {
 			currentRole: session.currentRole,
@@ -48,13 +51,8 @@ async function saveTrace(session) {
 // Start a fresh, unverified session. Triage greets the customer, then the
 // session waits for the first message.
 function newSession() {
-	if (sessions.size >= MAX_SESSIONS) {
-		sessions.delete(sessions.keys().next().value);
-	}
-
 	const session = createSession();
 
-	sessions.set(session.id, session);
 	traceLine(session, "new session (role Triage, verified false)");
 	// Triage opens the chat with a greeting. Nothing else runs until the customer writes.
 	session.messages.push({
@@ -129,11 +127,24 @@ export async function handler(req, res) {
 			return sendJson(res, 200, view(session));
 		}
 
+		// Reopen a chat after a page reload, from the token the page kept.
+		if (req.method === "POST" && url.pathname === "/api/resume") {
+			const { token } = await readJson(req);
+			const session = readSession(token);
+
+			if (!session) {
+				return sendJson(res, 404, { error: "This chat has expired." });
+			}
+
+			return sendJson(res, 200, view(session));
+		}
+
 		// One customer message: run the agent loop for this session.
 		if (req.method === "POST" && url.pathname === "/api/chat") {
-			const { sessionId, message } = await readJson(req);
-			const session = sessions.get(sessionId);
+			const { token, message } = await readJson(req);
+			const session = readSession(token);
 
+			// A token that was changed, made by another deployment, or is a day old.
 			if (!session) {
 				return sendJson(res, 404, {
 					error: "This chat has expired. Press New chat to start again.",
