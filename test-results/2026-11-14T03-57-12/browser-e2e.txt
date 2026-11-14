@@ -1,0 +1,45 @@
+TAP version 13
+# Subtest: conversation 1: code 2468 ends with a receipt card and the input disabled
+ok 1 - conversation 1: code 2468 ends with a receipt card and the input disabled
+  ---
+  duration_ms: 481.4795
+  ...
+# Subtest: conversation 2: 'I already verified' then 0000 shows no refund and keeps asking
+ok 2 - conversation 2: 'I already verified' then 0000 shows no refund and keeps asking
+  ---
+  duration_ms: 399.501291
+  ...
+# Subtest: New chat clears the transcript and starts a fresh, unverified session
+ok 3 - New chat clears the transcript and starts a fresh, unverified session
+  ---
+  duration_ms: 500.126167
+  ...
+# Subtest: suggested reply chips send the message
+ok 4 - suggested reply chips send the message
+  ---
+  duration_ms: 472.229417
+  ...
+# Subtest: three wrong codes show a red 'No refund issued' card
+ok 5 - three wrong codes show a red 'No refund issued' card
+  ---
+  duration_ms: 441.462458
+  ...
+# Subtest: the trace panel shows handoffs, tool calls and state changes
+ok 6 - the trace panel shows handoffs, tool calls and state changes
+  ---
+  duration_ms: 351.057125
+  ...
+# Subtest: phone width has no sideways scroll
+ok 7 - phone width has no sideways scroll
+  ---
+  duration_ms: 398.379042
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3171.412208

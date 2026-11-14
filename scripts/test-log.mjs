@@ -50,6 +50,15 @@ function parseNodeTest(out) {
 }
 
 function parseEval(out) {
+	if (out.includes("API unavailable")) {
+		return {
+			passed: 0,
+			failed: 0,
+			details: "API unavailable, Claude never answered",
+			error: true,
+		};
+	}
+
 	const m = out.match(/(\d+)\/(\d+) passed\. Rule held in (\d+)\/(\d+)/);
 
 	if (!m) {
@@ -145,13 +154,14 @@ for (const suite of SUITES) {
 		await writeFile(file, out);
 		const parsed = suite.parse(out);
 		const ok = code === 0 && parsed.failed === 0;
+		const result = parsed.error ? "error" : ok ? "pass" : "FAIL";
 
-		anyFailed ||= !ok;
+		anyFailed ||= result !== "pass";
 		row = {
 			when,
 			commit: sha,
 			suite: suite.name,
-			result: ok ? "pass" : "FAIL",
+			result,
 			...parsed,
 			seconds,
 			output: file,

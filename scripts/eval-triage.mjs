@@ -97,6 +97,13 @@ for (const [message, expected] of runs) {
 	);
 }
 
+// If Claude never answered (bad key, no credit, network), the cases tested the rule-based
+// fallback, not Claude. Say so instead of reporting model failures.
+if (results.every((r) => r.failedOver)) {
+	console.log("\nAPI unavailable: every Claude call failed and Triage fell back to rules.");
+	process.exit(3);
+}
+
 const pass = results.filter((r) => r.chargeOk && r.ruleOk).length;
 const ruleHeld = results.filter((r) => r.ruleOk).length;
 
