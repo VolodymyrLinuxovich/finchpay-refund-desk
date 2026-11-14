@@ -1,0 +1,196 @@
+TAP version 13
+# Subtest: conversation 1: refund succeeds after a valid code
+ok 1 - conversation 1: refund succeeds after a valid code
+  ---
+  duration_ms: 7.883959
+  ...
+# Subtest: conversation 2: claiming to be verified does not verify, wrong code issues no refund
+ok 2 - conversation 2: claiming to be verified does not verify, wrong code issues no refund
+  ---
+  duration_ms: 0.161875
+  ...
+# Subtest: three wrong codes end the conversation and lock the charge
+ok 3 - three wrong codes end the conversation and lock the charge
+  ---
+  duration_ms: 0.121958
+  ...
+# Subtest: New chat does not reset the lockout
+ok 4 - New chat does not reset the lockout
+  ---
+  duration_ms: 0.256208
+  ...
+# Subtest: lockout expires after LOCK_MINUTES
+ok 5 - lockout expires after LOCK_MINUTES
+  ---
+  duration_ms: 0.117875
+  ...
+# Subtest: a correct code resets the wrong code count
+ok 6 - a correct code resets the wrong code count
+  ---
+  duration_ms: 0.102667
+  ...
+# Subtest: a code inside the first message is not used, Identity still asks
+ok 7 - a code inside the first message is not used, Identity still asks
+  ---
+  duration_ms: 0.102583
+  ...
+# Subtest: two 4 digit numbers in one message are not guessed and cost no attempt
+ok 8 - two 4 digit numbers in one message are not guessed and cost no attempt
+  ---
+  duration_ms: 0.194417
+  ...
+# Subtest: two charge IDs in one message make Triage ask which one
+ok 9 - two charge IDs in one message make Triage ask which one
+  ---
+  duration_ms: 0.15525
+  ...
+# Subtest: issue_refund refuses an unverified session before recording anything
+ok 10 - issue_refund refuses an unverified session before recording anything
+  ---
+  duration_ms: 0.280459
+  ...
+# Subtest: issue_refund refuses a session whose verified flag was set without verify_identity
+ok 11 - issue_refund refuses a session whose verified flag was set without verify_identity
+  ---
+  duration_ms: 0.051583
+  ...
+# Subtest: verification does not carry over to a new session
+ok 12 - verification does not carry over to a new session
+  ---
+  duration_ms: 0.077
+  ...
+# Subtest: a charge can only be refunded once
+ok 13 - a charge can only be refunded once
+  ---
+  duration_ms: 0.137583
+  ...
+# Subtest: unknown charge and missing charge keep Triage asking
+ok 14 - unknown charge and missing charge keep Triage asking
+  ---
+  duration_ms: 0.069166
+  ...
+# Subtest: loop stops at the step limit if an agent keeps calling tools
+ok 15 - loop stops at the step limit if an agent keeps calling tools
+  ---
+  duration_ms: 0.078417
+  ...
+# Subtest: loop blocks a role from calling a tool it does not own
+ok 16 - loop blocks a role from calling a tool it does not own
+  ---
+  duration_ms: 0.088959
+  ...
+# Subtest: loop blocks a handoff that skips Identity
+ok 17 - loop blocks a handoff that skips Identity
+  ---
+  duration_ms: 0.053166
+  ...
+# Subtest: GET / serves the chat page
+ok 18 - GET / serves the chat page
+  ---
+  duration_ms: 18.5565
+  ...
+# Subtest: a new session starts unverified, in Triage, waiting for the customer
+ok 19 - a new session starts unverified, in Triage, waiting for the customer
+  ---
+  duration_ms: 4.077875
+  ...
+# Subtest: conversation 1 over HTTP ends with one refund
+ok 20 - conversation 1 over HTTP ends with one refund
+  ---
+  duration_ms: 11.239917
+  ...
+# Subtest: conversation 2 over HTTP issues no refund
+ok 21 - conversation 2 over HTTP issues no refund
+  ---
+  duration_ms: 3.924708
+  ...
+# Subtest: two sessions do not share verification
+ok 22 - two sessions do not share verification
+  ---
+  duration_ms: 4.862292
+  ...
+# Subtest: an unknown session gets 404 and changes nothing
+ok 23 - an unknown session gets 404 and changes nothing
+  ---
+  duration_ms: 0.652583
+  ...
+# Subtest: a message after the session ended does nothing
+ok 24 - a message after the session ended does nothing
+  ---
+  duration_ms: 3.264416
+  ...
+# SyntaxError: Expected property name or '}' in JSON at position 1
+#     at JSON.parse (<anonymous>)
+#     at readJson (file:///Users/volodymyrborysenko/Code/finchpay-refund-desk/src/http-handler.js:71:21)
+#     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+#     at async Server.handler (file:///Users/volodymyrborysenko/Code/finchpay-refund-desk/src/http-handler.js:91:38)
+# Subtest: broken JSON gets 400
+ok 25 - broken JSON gets 400
+  ---
+  duration_ms: 1.256458
+  ...
+# Subtest: a non-string message is ignored
+ok 26 - a non-string message is ignored
+  ---
+  duration_ms: 1.221875
+  ...
+# Subtest: a very long message is cut to 2000 characters
+ok 27 - a very long message is cut to 2000 characters
+  ---
+  duration_ms: 1.278583
+  ...
+# demo data reset: refunds and lockouts cleared
+# Subtest: reset-demo clears refunds and lockouts
+ok 28 - reset-demo clears refunds and lockouts
+  ---
+  duration_ms: 4.21575
+  ...
+# Subtest: unknown routes get 404
+ok 29 - unknown routes get 404
+  ---
+  duration_ms: 0.332209
+  ...
+# Subtest: Claude's charge is stored and Triage hands off to Identity
+ok 30 - Claude's charge is stored and Triage hands off to Identity
+  ---
+  duration_ms: 1.404291
+  ...
+# Subtest: a charge the customer never wrote is rejected
+ok 31 - a charge the customer never wrote is rejected
+  ---
+  duration_ms: 0.147458
+  ...
+# Subtest: a charge that only matches part of what the customer wrote is rejected
+ok 32 - a charge that only matches part of what the customer wrote is rejected
+  ---
+  duration_ms: 0.147542
+  ...
+# Subtest: Claude's clarifying question is passed to the customer
+ok 33 - Claude's clarifying question is passed to the customer
+  ---
+  duration_ms: 0.168083
+  ...
+# Subtest: if the API call fails, rule-based Triage takes over
+ok 34 - if the API call fails, rule-based Triage takes over
+  ---
+  duration_ms: 0.186167
+  ...
+# Subtest: a prompt injection in Triage still has to pass Identity
+ok 35 - a prompt injection in Triage still has to pass Identity
+  ---
+  duration_ms: 0.171667
+  ...
+# Subtest: 400 random conversations, some with rogue agents, never refund without a successful verify_identity
+ok 36 - 400 random conversations, some with rogue agents, never refund without a successful verify_identity
+  ---
+  duration_ms: 21.291708
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 367.124916

@@ -1,7 +1,12 @@
 // Mock FinchPay backend. Everything lives in memory and resets when the server restarts.
 
 const CHARGES = {
-  "CH-101": { id: "CH-101", amountCents: 2500, currency: "USD", description: "FinchPay card charge" },
+	"CH-101": {
+		id: "CH-101",
+		amountCents: 2500,
+		currency: "USD",
+		description: "FinchPay card charge",
+	},
 };
 
 const VALID_CODE = "2468";
@@ -23,70 +28,98 @@ const failedAttempts = new Map(); // chargeId -> { count, lockedUntil }
 const refunds = [];
 
 export function getCharge(chargeId) {
-  return CHARGES[chargeId] ?? null;
+	return CHARGES[chargeId] ?? null;
 }
 
 // verify_identity: checks the code for the requested charge and returns success or failure.
 // It never changes the session itself. The Identity agent sets session.verified
 // from a successful result, and verifiedSessions is the tool's own proof of it.
 export function verifyIdentity(session, { code, chargeId }, now = Date.now()) {
-  const entry = failedAttempts.get(chargeId) ?? { count: 0, lockedUntil: 0 };
-  if (entry.lockedUntil > now) {
-    return { ok: false, error: "locked", retryAfterMinutes: Math.ceil((entry.lockedUntil - now) / 60000) };
-  }
-  if (entry.lockedUntil && entry.lockedUntil <= now) {
-    entry.count = 0;
-    entry.lockedUntil = 0;
-  }
+	const entry = failedAttempts.get(chargeId) ?? { count: 0, lockedUntil: 0 };
 
-  if (typeof code === "string" && code === VALID_CODE) {
-    failedAttempts.delete(chargeId);
-    verifiedSessions.add(session.id);
-    return { ok: true };
-  }
+	// Locked charges refuse every code, even the right one, until the lock runs out.
+	if (entry.lockedUntil > now) {
+		return {
+			ok: false,
+			error: "locked",
+			retryAfterMinutes: Math.ceil((entry.lockedUntil - now) / 60000),
+		};
+	}
 
-  entry.count += 1;
-  const attemptsLeft = Math.max(0, MAX_VERIFY_ATTEMPTS - entry.count);
-  if (attemptsLeft === 0) entry.lockedUntil = now + LOCK_MINUTES * 60000;
-  failedAttempts.set(chargeId, entry);
-  return { ok: false, error: "invalid_code", attemptsLeft };
+	// The lock has expired. Start counting wrong codes from zero again.
+	if (entry.lockedUntil && entry.lockedUntil <= now) {
+		entry.count = 0;
+		entry.lockedUntil = 0;
+	}
+
+	// Right code: clear the wrong code count and record the proof for issue_refund.
+	if (typeof code === "string" && code === VALID_CODE) {
+		failedAttempts.delete(chargeId);
+		verifiedSessions.add(session.id);
+
+		return { ok: true };
+	}
+
+	// Wrong code: count it, and lock the charge once the attempts run out.
+	entry.count += 1;
+	const attemptsLeft = Math.max(0, MAX_VERIFY_ATTEMPTS - entry.count);
+
+	if (attemptsLeft === 0) {
+		entry.lockedUntil = now + LOCK_MINUTES * 60000;
+	}
+
+	failedAttempts.set(chargeId, entry);
+
+	return { ok: false, error: "invalid_code", attemptsLeft };
 }
 
 // issue_refund: the refund rule is enforced here, before anything is recorded.
 export function issueRefund(session, { chargeId }) {
-  if (session.verified !== true || !verifiedSessions.has(session.id)) {
-    return { ok: false, error: "identity_not_verified" };
-  }
-  const charge = getCharge(chargeId);
-  if (!charge) {
-    return { ok: false, error: "unknown_charge" };
-  }
-  if (refunds.some((r) => r.chargeId === chargeId)) {
-    return { ok: false, error: "already_refunded" };
-  }
-  const reference = `RF-${String(refunds.length + 1).padStart(3, "0")}`;
-  refunds.push({
-    reference,
-    chargeId,
-    amountCents: charge.amountCents,
-    sessionId: session.id,
-    createdAt: new Date().toISOString(),
-  });
-  return { ok: true, reference, amountCents: charge.amountCents, currency: charge.currency };
+	// The rule. Both must hold: the session says it is verified, and this tool
+	// layer saw verify_identity succeed for this exact session id.
+	if (session.verified !== true || !verifiedSessions.has(session.id)) {
+		return { ok: false, error: "identity_not_verified" };
+	}
+
+	const charge = getCharge(chargeId);
+
+	if (!charge) {
+		return { ok: false, error: "unknown_charge" };
+	}
+
+	// One refund per charge, across all sessions.
+	if (refunds.some((r) => r.chargeId === chargeId)) {
+		return { ok: false, error: "already_refunded" };
+	}
+
+	// All checks passed. Record the refund and hand back its reference.
+	const reference = `RF-${String(refunds.length + 1).padStart(3, "0")}`;
+
+	refunds.push({
+		reference,
+		chargeId,
+		amountCents: charge.amountCents,
+		sessionId: session.id,
+		createdAt: new Date().toISOString(),
+	});
+
+	return { ok: true, reference, amountCents: charge.amountCents, currency: charge.currency };
 }
 
+// The tools the loop can run, by the names agents use.
 export const TOOLS = {
-  verify_identity: verifyIdentity,
-  issue_refund: issueRefund,
+	verify_identity: verifyIdentity,
+	issue_refund: issueRefund,
 };
 
+// A copy of every refund issued, for the /api/refunds route and tests.
 export function listRefunds() {
-  return refunds.map((r) => ({ ...r }));
+	return refunds.map((r) => ({ ...r }));
 }
 
-// Test helper. Clears refunds, verifications and lockouts.
+// Clears refunds, verifications and lockouts. Used by tests and the Reset demo data button.
 export function resetStore() {
-  refunds.length = 0;
-  verifiedSessions.clear();
-  failedAttempts.clear();
+	refunds.length = 0;
+	verifiedSessions.clear();
+	failedAttempts.clear();
 }

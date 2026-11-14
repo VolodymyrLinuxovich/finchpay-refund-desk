@@ -7,9 +7,12 @@ import { llmTriageEnabled } from "./llm-triage.js";
 export default handler;
 
 if (!process.env.VERCEL) {
-  const PORT = Number(process.env.PORT ?? 3000);
-  http.createServer(handler).listen(PORT, () => {
-    console.log(`FinchPay refund desk running at http://localhost:${PORT}`);
-    console.log(`Triage mode: ${llmTriageEnabled() ? "Claude (ANTHROPIC_API_KEY set)" : "rules"}`);
-  });
+	const PORT = Number(process.env.PORT ?? 3000);
+
+	http.createServer(handler).listen(PORT, () => {
+		console.log(`FinchPay refund desk running at http://localhost:${PORT}`);
+		console.log(
+			`Triage mode: ${llmTriageEnabled() ? "Claude (ANTHROPIC_API_KEY set)" : "rules"}`,
+		);
+	});
 }
