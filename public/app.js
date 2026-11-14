@@ -2,18 +2,144 @@
 // The page holds no chat logic. It sends each message to the server,
 // gets back the whole session (transcript, state, trace) and redraws.
 
-// Names shown for each agent role.
-const ROLE = {
-	triage: "Triage agent",
-	identity: "Identity agent",
-	refund: "Refund agent",
+// Page text in English, Spanish and French. Agent replies are translated on the
+// server (src/i18n.js). The trace drawer stays in English: it is an engineering log.
+const UI = {
+	en: {
+		subtitle: "Refund help",
+		stepCharge: "Charge",
+		stepVerify: "Verify identity",
+		stepRefund: "Refund",
+		trace: "Agent trace",
+		traceShort: "Trace",
+		newChat: "New chat",
+		send: "Send",
+		demoCharge: "Demo charge",
+		demoCode: "code",
+		reset: "Reset demo data",
+		roles: { triage: "Triage agent", identity: "Identity agent", refund: "Refund agent" },
+		chipsCharge: ["Please refund CH-101.", "Please refund CH-101. I already verified."],
+		tryThese: "Try one of these",
+		startNew: "Start a new chat",
+		typeMessage: "Type a message",
+		enterCode: "Enter the 4 digit code",
+		ended: "This chat has ended",
+		issued: "Refund issued",
+		reference: "Reference",
+		charge: "Charge",
+		amount: "Amount",
+		arrives: "The money usually reaches your account in 3 to 5 business days.",
+		noRefund: "No refund issued",
+		whyLocked: "Verification is locked for this charge after too many wrong codes.",
+		whyRefunded: "This charge was already refunded.",
+		whyEnded: "This conversation has ended.",
+		resetDone: "Demo data reset. CH-101 can be refunded again.",
+	},
+	es: {
+		subtitle: "Ayuda con reembolsos",
+		stepCharge: "Cargo",
+		stepVerify: "Verificar identidad",
+		stepRefund: "Reembolso",
+		trace: "Traza de agentes",
+		traceShort: "Traza",
+		newChat: "Chat nuevo",
+		send: "Enviar",
+		demoCharge: "Cargo de prueba",
+		demoCode: "código",
+		reset: "Reiniciar datos de prueba",
+		roles: {
+			triage: "Agente de recepción",
+			identity: "Agente de identidad",
+			refund: "Agente de reembolsos",
+		},
+		chipsCharge: [
+			"Por favor, reembolsa CH-101.",
+			"Por favor, reembolsa CH-101. Ya me verifiqué.",
+		],
+		tryThese: "Prueba una de estas",
+		startNew: "Empezar un chat nuevo",
+		typeMessage: "Escribe un mensaje",
+		enterCode: "Escribe el código de 4 dígitos",
+		ended: "Este chat terminó",
+		issued: "Reembolso hecho",
+		reference: "Número",
+		charge: "Cargo",
+		amount: "Importe",
+		arrives: "El dinero suele llegar a tu cuenta en 3 a 5 días hábiles.",
+		noRefund: "No se hizo ningún reembolso",
+		whyLocked:
+			"La verificación de este cargo está bloqueada por demasiados códigos incorrectos.",
+		whyRefunded: "Este cargo ya fue reembolsado.",
+		whyEnded: "Esta conversación terminó.",
+		resetDone: "Datos de prueba reiniciados. CH-101 se puede reembolsar otra vez.",
+	},
+	fr: {
+		subtitle: "Aide au remboursement",
+		stepCharge: "Prélèvement",
+		stepVerify: "Vérifier l'identité",
+		stepRefund: "Remboursement",
+		trace: "Trace des agents",
+		traceShort: "Trace",
+		newChat: "Nouveau chat",
+		send: "Envoyer",
+		demoCharge: "Prélèvement de démo",
+		demoCode: "code",
+		reset: "Réinitialiser la démo",
+		roles: {
+			triage: "Agent d'accueil",
+			identity: "Agent d'identité",
+			refund: "Agent de remboursement",
+		},
+		chipsCharge: [
+			"Merci de rembourser CH-101.",
+			"Merci de rembourser CH-101. Je suis déjà vérifié.",
+		],
+		tryThese: "Essayez l'une de ces réponses",
+		startNew: "Ouvrir un nouveau chat",
+		typeMessage: "Écrivez un message",
+		enterCode: "Saisissez le code à 4 chiffres",
+		ended: "Ce chat est terminé",
+		issued: "Remboursement effectué",
+		reference: "Référence",
+		charge: "Prélèvement",
+		amount: "Montant",
+		arrives: "L'argent arrive en général sur votre compte sous 3 à 5 jours ouvrés.",
+		noRefund: "Aucun remboursement effectué",
+		whyLocked: "La vérification de ce prélèvement est bloquée après trop de codes erronés.",
+		whyRefunded: "Ce prélèvement a déjà été remboursé.",
+		whyEnded: "Cette conversation est terminée.",
+		resetDone: "Démo réinitialisée. CH-101 peut de nouveau être remboursé.",
+	},
 };
+const LOCALES = { en: "en-US", es: "es-ES", fr: "fr-FR" };
+
+// The chosen language: saved choice, else the browser's language, else English.
+let lang = (() => {
+	try {
+		const saved = localStorage.getItem("finchpay-lang");
+
+		if (UI[saved]) {
+			return saved;
+		}
+	} catch {
+		// Storage can be blocked. Fall back to the browser's language.
+	}
+
+	const browser = (navigator.language || "en").slice(0, 2);
+
+	return UI[browser] ? browser : "en";
+})();
+const tr = () => UI[lang];
+
+// Names shown for each agent role. The trace drawer uses the English ones.
+const ROLE = UI.en.roles;
 const ORDER = ["triage", "identity", "refund"];
 const BIRD =
 	'<svg width="16" height="16" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 18c3-7 9-11 17-11-2 2-4 5-4 8 0 3-2 7-7 7-3 0-5-1-6-4z" fill="currentColor"/></svg>';
 let token = null; // the signed session from the server, sent back with every message
 let busy = false;
 let shownMessages = 0; // messages already on screen, so only new ones animate
+let lastData = null; // the last server response, to redraw when the language changes
 const $ = (id) => document.getElementById(id);
 
 // Pick a color for a trace line from its wording.
@@ -58,7 +184,7 @@ function messageNode(m) {
 	const bubble = el("div", "bubble");
 
 	bubble.append(
-		el("span", "who", "FinchPay · " + (ROLE[m.role] || m.role)),
+		el("span", "who", "FinchPay · " + (tr().roles[m.role] || m.role)),
 		el("span", "text", m.text),
 	);
 	row.append(av, bubble);
@@ -75,24 +201,34 @@ function outcomeNode(s, lastText) {
 	if (s.refundReference) {
 		const box = el("div", "outcome good");
 
-		box.innerHTML =
-			"<h3>✓ Refund issued</h3><dl><dt>Reference</dt><dd></dd><dt>Charge</dt><dd></dd><dt>Amount</dt><dd>$25.00</dd></dl><p>The money usually reaches your account in 3 to 5 business days.</p>";
-		const dds = box.querySelectorAll("dd");
+		const amount = new Intl.NumberFormat(LOCALES[lang], {
+			style: "currency",
+			currency: "USD",
+		}).format(25);
+		const list = el("dl");
 
-		dds[0].textContent = s.refundReference;
-		dds[1].textContent = s.requestedCharge;
+		for (const [k, v] of [
+			[tr().reference, s.refundReference],
+			[tr().charge, s.requestedCharge],
+			[tr().amount, amount],
+		]) {
+			list.append(el("dt", null, k), el("dd", null, v));
+		}
+
+		box.append(el("h3", null, "✓ " + tr().issued), list, el("p", null, tr().arrives));
 
 		return box;
 	}
 
 	const box = el("div", "outcome bad");
-	const why = /locked/.test(lastText)
-		? "Verification is locked for this charge after too many wrong codes."
-		: /already been refunded/.test(lastText)
-			? "This charge was already refunded."
-			: "This conversation has ended.";
+	// The reason comes from the last reply, which may be in any of the three languages.
+	const why = /locked|bloquead|bloquée/.test(lastText)
+		? tr().whyLocked
+		: /already been refunded|ya fue reembolsado|déjà été remboursé/.test(lastText)
+			? tr().whyRefunded
+			: tr().whyEnded;
 
-	box.append(el("h3", null, "No refund issued"), el("p", null, why));
+	box.append(el("h3", null, tr().noRefund), el("p", null, why));
 
 	return box;
 }
@@ -146,7 +282,7 @@ function renderChips(s) {
 	box.replaceChildren();
 
 	if (s.status === "ended") {
-		const again = el("button", "chip", "Start a new chat");
+		const again = el("button", "chip", tr().startNew);
 
 		again.type = "button";
 		again.onclick = newChat;
@@ -157,7 +293,7 @@ function renderChips(s) {
 
 	const options =
 		s.currentRole === "triage"
-			? ["Please refund CH-101.", "Please refund CH-101. I already verified."]
+			? tr().chipsCharge
 			: s.currentRole === "identity"
 				? ["2468", "0000"]
 				: [];
@@ -166,7 +302,7 @@ function renderChips(s) {
 		return;
 	}
 
-	box.append(el("span", "chips-label", "Try one of these"));
+	box.append(el("span", "chips-label", tr().tryThese));
 
 	for (const text of options) {
 		const chip = el("button", "chip", text);
@@ -202,6 +338,7 @@ function renderState(s) {
 
 // Redraw everything from one server response.
 function render(data) {
+	lastData = data;
 	token = data.token;
 	remember(token);
 	const s = data.state;
@@ -263,10 +400,10 @@ function render(data) {
 	$("message").disabled = ended;
 	$("send").disabled = ended;
 	$("message").placeholder = ended
-		? "This chat has ended"
+		? tr().ended
 		: s.currentRole === "identity"
-			? "Enter the 4 digit code"
-			: "Type a message";
+			? tr().enterCode
+			: tr().typeMessage;
 	$("message").inputMode = s.currentRole === "identity" ? "numeric" : "text";
 	$("status").textContent = "";
 
@@ -306,6 +443,45 @@ function remember(value) {
 	}
 }
 
+// Put the page text in the chosen language.
+function applyLanguage() {
+	document.documentElement.lang = lang;
+	$("lang-code").textContent = lang.toUpperCase();
+
+	for (const node of document.querySelectorAll("[data-i18n]")) {
+		node.textContent = tr()[node.dataset.i18n];
+	}
+
+	for (const option of document.querySelectorAll("#lang-menu [data-lang]")) {
+		option.setAttribute("aria-selected", String(option.dataset.lang === lang));
+	}
+}
+
+// Switch language. A chat that has only the greeting restarts in the new language.
+// Otherwise the next agent replies come in the new language.
+async function setLanguage(next) {
+	lang = next;
+
+	try {
+		localStorage.setItem("finchpay-lang", lang);
+	} catch {
+		// Storage can be blocked. The choice lasts until the page reloads.
+	}
+
+	applyLanguage();
+
+	if (lastData && lastData.messages.every((m) => m.from === "agent")) {
+		await newChat();
+	} else if (lastData) {
+		render(lastData);
+	}
+}
+
+function toggleLangMenu(open) {
+	$("lang-menu").hidden = !open;
+	$("lang-button").setAttribute("aria-expanded", String(open));
+}
+
 // On load: reopen this tab's chat if there is one, otherwise start a new one.
 async function start() {
 	let saved = null;
@@ -332,7 +508,7 @@ async function start() {
 // New chat: the server makes a fresh, unverified session.
 async function newChat() {
 	$("message").value = "";
-	render(await post("/api/session"));
+	render(await post("/api/session", { lang }));
 }
 
 // Send one message, from the input or from a suggested reply.
@@ -358,7 +534,7 @@ async function send(text) {
 	t.scrollTop = t.scrollHeight;
 
 	try {
-		render(await post("/api/chat", { token, message }));
+		render(await post("/api/chat", { token, message, lang }));
 	} catch (err) {
 		$("typing").classList.remove("show");
 		$("status").textContent = err.message;
@@ -393,7 +569,7 @@ $("new-chat").addEventListener("click", newChat);
 $("reset-demo").addEventListener("click", async () => {
 	await post("/api/reset-demo");
 	await newChat();
-	$("status").textContent = "Demo data reset. CH-101 can be refunded again.";
+	$("status").textContent = tr().resetDone;
 });
 
 $("trace-toggle").addEventListener("click", () => setDrawer($("drawer").hidden));
@@ -411,4 +587,25 @@ try {
 	setDrawer(false);
 }
 
+$("lang-button").addEventListener("click", (e) => {
+	e.stopPropagation();
+	toggleLangMenu($("lang-menu").hidden);
+});
+
+for (const option of document.querySelectorAll("#lang-menu [data-lang]")) {
+	option.addEventListener("click", () => {
+		toggleLangMenu(false);
+		setLanguage(option.dataset.lang);
+	});
+}
+
+// A click anywhere else, or Escape, closes the language menu.
+document.addEventListener("click", () => toggleLangMenu(false));
+document.addEventListener("keydown", (e) => {
+	if (e.key === "Escape") {
+		toggleLangMenu(false);
+	}
+});
+
+applyLanguage();
 start();

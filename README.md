@@ -28,6 +28,7 @@ follows the rule around its one risky action.
 | | |
 |---|---|
 | **Try it** | Open the demo, tap **Please refund CH-101.**, then **2468**. Press **Agent trace** to watch the handoffs and tool calls |
+| **Languages** | English, Español and Français from the globe button. Agents reply in the chosen language; the trace stays in English |
 | **Demo data** | One charge, `CH-101` for $25. The valid code is `2468`. Everything is mocked and held in memory |
 | **Shared demo** | Everyone who opens the demo shares one store. If CH-101 is already refunded or locked, press **Reset demo data** |
 | **Engineering note** | [ENGINEERING_NOTE.md](ENGINEERING_NOTE.md) |
@@ -211,6 +212,7 @@ npm run traces
 | `src/llm-triage.js` | The Claude call Triage makes: structured JSON, no tools, capped calls per process |
 | `src/tools.js` | `verify_identity` and `issue_refund`, mock charges, refunds and lockouts. **The refund rule lives in `issueRefund`** |
 | `src/session.js` | The shared session object and trace helpers |
+| `src/i18n.js` | Every agent reply in English, Spanish and French |
 | `src/signing.js` | Signs the session token the page carries, and the receipt `verify_identity` writes |
 | `src/http-handler.js` | Routes: the page, `/api/session`, `/api/chat`, `/api/resume`, `/api/refunds`, `/api/reset-demo` |
 | `src/server.js` | Local server for `npm start`, and the Vercel entry point |

@@ -29,3 +29,6 @@ Every run of `npm run test:log` adds one row per suite. Full output of each run 
 | 11/13/26, 8:36 PM PT | 7f7a37d+changes | unit + http + random | pass | 39 | 0 | 0.4s |  | signed session tokens and receipts; simpler trace drawer | [output](test-results/2026-11-14T04-36-37/unit-http-random.txt) |
 | 11/13/26, 8:36 PM PT | 7f7a37d+changes | browser e2e | pass | 7 | 0 | 3.5s |  | signed session tokens and receipts; simpler trace drawer | [output](test-results/2026-11-14T04-36-37/browser-e2e.txt) |
 | 11/13/26, 8:36 PM PT | 7f7a37d+changes | live Claude eval | pass | 20 | 0 | 36.9s | rule held 20/20 | signed session tokens and receipts; simpler trace drawer | [output](test-results/2026-11-14T04-36-37/live-Claude-eval.txt) |
+| 11/13/26, 8:42 PM PT | ff72040+changes | unit + http + random | pass | 40 | 0 | 0.4s |  | English, Spanish and French | [output](test-results/2026-11-14T04-42-49/unit-http-random.txt) |
+| 11/13/26, 8:42 PM PT | ff72040+changes | browser e2e | pass | 7 | 0 | 3.2s |  | English, Spanish and French | [output](test-results/2026-11-14T04-42-49/browser-e2e.txt) |
+| 11/13/26, 8:42 PM PT | ff72040+changes | live Claude eval | pass | 20 | 0 | 44.2s | rule held 20/20 | English, Spanish and French | [output](test-results/2026-11-14T04-42-49/live-Claude-eval.txt) |

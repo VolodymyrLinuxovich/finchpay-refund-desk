@@ -250,3 +250,25 @@ test("loop blocks a handoff that skips Identity", async () => {
 		AGENTS.triage = original;
 	}
 });
+
+test("agents reply in Spanish and French, and the rule holds the same way", async () => {
+	const es = createSession("es");
+
+	await runTurn(es, "Por favor, reembolsa CH-101. Ya me verifiqué.");
+	assert.match(lastReply(es), /código de 4 dígitos/);
+	assert.equal(es.verified, false);
+	await runTurn(es, "0000");
+	assert.match(lastReply(es), /no coincide/);
+	await runTurn(es, "2468");
+	assert.match(lastReply(es), /Reembolsé .*25,00.*RF-001/);
+
+	resetStore();
+	const fr = createSession("fr");
+
+	await runTurn(fr, "Merci de rembourser CH-101.");
+	assert.match(lastReply(fr), /code à 4 chiffres/);
+	await runTurn(fr, "2468");
+	assert.match(lastReply(fr), /J'ai remboursé .*25,00.*RF-001/);
+	// The trace stays in English for every language.
+	assert.ok(fr.trace.some((l) => l.includes("Identity -> Refund (identity verified)")));
+});

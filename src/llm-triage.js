@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { LANG_NAMES, pickLang } from "./i18n.js";
 
 // Claude reads the customer's message and returns which charge they mean.
 // It has no tools and cannot change session state. The Triage agent in
@@ -54,7 +55,7 @@ export function llmTriageEnabled() {
 }
 
 // Returns { chargeId: string | null, reply: string } or throws.
-export async function askClaudeForCharge(customerMessages) {
+export async function askClaudeForCharge(customerMessages, lang = "en") {
 	client ??= new Anthropic({ timeout: 20_000, maxRetries: 1 });
 	llmCalls += 1;
 	const response = await client.beta.messages.create({
@@ -63,7 +64,7 @@ export async function askClaudeForCharge(customerMessages) {
 		betas: ["server-side-fallback-2026-07-01"],
 		fallbacks: "default",
 		output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-		system: SYSTEM,
+		system: `${SYSTEM}\nWrite the reply in ${LANG_NAMES[pickLang(lang)]}.`,
 		messages: [
 			{
 				role: "user",

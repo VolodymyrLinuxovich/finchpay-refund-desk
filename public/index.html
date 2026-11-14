@@ -202,6 +202,43 @@
 				color: var(--brand);
 			}
 
+			/* Language menu under the globe button. */
+			.lang {
+				position: relative;
+			}
+
+			#lang-menu {
+				position: absolute;
+				top: calc(100% + 6px);
+				right: 0;
+				z-index: 30;
+				list-style: none;
+				margin: 0;
+				padding: 6px;
+				min-width: 150px;
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: 12px;
+				box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+			}
+
+			#lang-menu button {
+				width: 100%;
+				text-align: left;
+				border: 0;
+				background: none;
+				color: var(--text);
+				padding: 8px 10px;
+				border-radius: 8px;
+				font-size: 14px;
+			}
+
+			#lang-menu button:hover,
+			#lang-menu button[aria-selected="true"] {
+				background: var(--brand-soft);
+				color: var(--brand);
+			}
+
 			.btn-short {
 				display: none;
 			}
@@ -231,7 +268,7 @@
 				}
 
 				.actions {
-					margin-left: auto;
+					gap: 6px;
 				}
 
 				.btn .btn-label {
@@ -240,6 +277,19 @@
 
 				.btn .btn-short {
 					display: inline;
+				}
+
+				.btn {
+					padding: 7px 11px;
+					font-size: 13px;
+				}
+
+				#lang-code {
+					display: none;
+				}
+
+				.brand {
+					margin-right: auto;
 				}
 			}
 
@@ -711,24 +761,62 @@
 					/>
 					<circle cx="17.5" cy="11.5" r="1.2" fill="var(--brand)" />
 				</svg>
-				FinchPay <small>Refund help</small>
+				FinchPay <small data-i18n="subtitle">Refund help</small>
 			</div>
 
 			<nav class="steps" id="steps" aria-label="Progress">
 				<div class="step" data-step="triage">
-					<span class="dot">1</span><span class="label">Charge</span>
+					<span class="dot">1</span
+					><span class="label" data-i18n="stepCharge">Charge</span>
 				</div>
 				<div class="bar"></div>
 				<div class="step" data-step="identity">
-					<span class="dot">2</span><span class="label">Verify identity</span>
+					<span class="dot">2</span
+					><span class="label" data-i18n="stepVerify">Verify identity</span>
 				</div>
 				<div class="bar"></div>
 				<div class="step" data-step="refund">
-					<span class="dot">3</span><span class="label">Refund</span>
+					<span class="dot">3</span
+					><span class="label" data-i18n="stepRefund">Refund</span>
 				</div>
 			</nav>
 
 			<div class="actions">
+				<div class="lang">
+					<button
+						id="lang-button"
+						class="btn"
+						type="button"
+						aria-haspopup="listbox"
+						aria-expanded="false"
+						aria-label="Language"
+					>
+						<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+							<circle
+								cx="12"
+								cy="12"
+								r="9"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.6"
+							/>
+							<path
+								d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.6"
+							/>
+						</svg>
+						<span id="lang-code">EN</span>
+					</button>
+					<ul id="lang-menu" role="listbox" aria-label="Language" hidden>
+						<li><button type="button" role="option" data-lang="en">English</button></li>
+						<li><button type="button" role="option" data-lang="es">Español</button></li>
+						<li>
+							<button type="button" role="option" data-lang="fr">Français</button>
+						</li>
+					</ul>
+				</div>
 				<button
 					id="trace-toggle"
 					class="btn"
@@ -737,9 +825,12 @@
 					aria-controls="drawer"
 					title="Show the agents' handoffs, tool calls and state"
 				>
-					<span class="btn-label">Agent trace</span><span class="btn-short">Trace</span>
+					<span class="btn-label" data-i18n="trace">Agent trace</span
+					><span class="btn-short" data-i18n="traceShort">Trace</span>
 				</button>
-				<button id="new-chat" class="btn primary" type="button">New chat</button>
+				<button id="new-chat" class="btn primary" type="button" data-i18n="newChat">
+					New chat
+				</button>
 			</div>
 		</header>
 
@@ -759,11 +850,12 @@
 								placeholder="Type a message"
 								aria-label="Message"
 							/>
-							<button id="send" type="submit">Send</button>
+							<button id="send" type="submit" data-i18n="send">Send</button>
 						</form>
 						<div class="demo-line">
-							Demo charge <b>CH-101</b> · $25 · code <b>2468</b> ·
-							<button id="reset-demo" class="linkbtn" type="button">
+							<span data-i18n="demoCharge">Demo charge</span> <b>CH-101</b> · $25 ·
+							<span data-i18n="demoCode">code</span> <b>2468</b> ·
+							<button id="reset-demo" class="linkbtn" type="button" data-i18n="reset">
 								Reset demo data
 							</button>
 						</div>

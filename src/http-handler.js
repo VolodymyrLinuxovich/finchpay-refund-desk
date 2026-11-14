@@ -6,6 +6,7 @@ import { runTurn } from "./loop.js";
 import { listRefunds, resetStore } from "./tools.js";
 import { llmTriageEnabled } from "./llm-triage.js";
 import { signSession, readSession } from "./signing.js";
+import { t, pickLang } from "./i18n.js";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC_DIR = path.join(ROOT, "public");
@@ -23,6 +24,7 @@ function view(session) {
 	return {
 		token: signSession(session),
 		sessionId: session.id,
+		lang: session.lang,
 		state: {
 			currentRole: session.currentRole,
 			status: session.status,
@@ -50,15 +52,15 @@ async function saveTrace(session) {
 
 // Start a fresh, unverified session. Triage greets the customer, then the
 // session waits for the first message.
-function newSession() {
-	const session = createSession();
+function newSession(lang) {
+	const session = createSession(pickLang(lang));
 
 	traceLine(session, "new session (role Triage, verified false)");
 	// Triage opens the chat with a greeting. Nothing else runs until the customer writes.
 	session.messages.push({
 		from: "agent",
 		role: "triage",
-		text: "Hi, this is the FinchPay refund desk. Which charge would you like refunded?",
+		text: t(session).greeting(),
 	});
 	session.status = "waiting";
 	traceLine(session, "Triage greets the customer, waiting for customer");
@@ -120,7 +122,8 @@ export async function handler(req, res) {
 
 		// New chat: a fresh, unverified session.
 		if (req.method === "POST" && url.pathname === "/api/session") {
-			const session = newSession();
+			const { lang } = await readJson(req);
+			const session = newSession(lang);
 
 			await saveTrace(session);
 
@@ -141,7 +144,7 @@ export async function handler(req, res) {
 
 		// One customer message: run the agent loop for this session.
 		if (req.method === "POST" && url.pathname === "/api/chat") {
-			const { token, message } = await readJson(req);
+			const { token, message, lang } = await readJson(req);
 			const session = readSession(token);
 
 			// A token that was changed, made by another deployment, or is a day old.
@@ -149,6 +152,11 @@ export async function handler(req, res) {
 				return sendJson(res, 404, {
 					error: "This chat has expired. Press New chat to start again.",
 				});
+			}
+
+			// The customer switched language: agents reply in the new one from now on.
+			if (lang) {
+				session.lang = pickLang(lang);
 			}
 
 			// Only plain text, at most 2000 characters, reaches the agents.

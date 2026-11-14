@@ -9,6 +9,7 @@
 import { AGENTS, ROLE_TOOLS, HANDOFFS } from "./agents.js";
 import { TOOLS } from "./tools.js";
 import { traceLine } from "./session.js";
+import { t } from "./i18n.js";
 
 // Steps allowed while handling one customer message. A normal turn uses at most 4.
 export const MAX_STEPS_PER_TURN = 8;
@@ -57,11 +58,7 @@ export async function runTurn(session, customerText) {
 
 	for (let step = 0; step < MAX_STEPS_PER_TURN; step++) {
 		if (session.totalSteps >= MAX_STEPS_PER_SESSION) {
-			endSession(
-				session,
-				"This chat has gone on too long. Please start a new chat.",
-				"session step limit reached",
-			);
+			endSession(session, t(session).tooLong(), "session step limit reached");
 
 			return session;
 		}
@@ -81,11 +78,7 @@ export async function runTurn(session, customerText) {
 						session,
 						`${name(role)} tried to call ${action.tool}: blocked, role may not use this tool`,
 					);
-					endSession(
-						session,
-						"Something went wrong on our side. No changes were made.",
-						"blocked tool call",
-					);
+					endSession(session, t(session).blocked(), "blocked tool call");
 
 					return session;
 				}
@@ -112,11 +105,7 @@ export async function runTurn(session, customerText) {
 						session,
 						`${name(role)} -> ${name(action.to)}: blocked, handoff not allowed`,
 					);
-					endSession(
-						session,
-						"Something went wrong on our side. No changes were made.",
-						"blocked handoff",
-					);
+					endSession(session, t(session).blocked(), "blocked handoff");
 
 					return session;
 				}
@@ -146,11 +135,7 @@ export async function runTurn(session, customerText) {
 
 			// Anything else is a bug in an agent. Fail closed.
 			default: {
-				endSession(
-					session,
-					"Something went wrong on our side. No changes were made.",
-					`unknown action ${action.type}`,
-				);
+				endSession(session, t(session).blocked(), `unknown action ${action.type}`);
 
 				return session;
 			}
@@ -159,11 +144,7 @@ export async function runTurn(session, customerText) {
 
 	// The agents kept going for MAX_STEPS_PER_TURN steps without
 	// asking or ending. Stop instead of looping forever.
-	endSession(
-		session,
-		"Sorry, I got stuck handling that. Please start a new chat.",
-		"turn step limit reached",
-	);
+	endSession(session, t(session).stuck(), "turn step limit reached");
 
 	return session;
 }

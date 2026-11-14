@@ -1,5 +1,6 @@
 import { getCharge, LOCK_MINUTES } from "./tools.js";
 import { setState, traceLine } from "./session.js";
+import { t, formatAmount } from "./i18n.js";
 import { llmTriageEnabled, askClaudeForCharge } from "./llm-triage.js";
 
 // Each agent is a function: (session, event) -> action (or a Promise of one).
@@ -21,11 +22,6 @@ import { llmTriageEnabled, askClaudeForCharge } from "./llm-triage.js";
 const CHARGE_PATTERN = /\bCH-?(\d+)\b/gi;
 const CODE_PATTERN = /\b\d{4}\b/g;
 
-// 2500 cents -> "$25.00".
-function formatAmount(cents, currency = "USD") {
-	return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
-}
-
 // "ch101", "CH-101" -> "CH-101". Anything that is not a charge ID -> null.
 function normalizeChargeId(raw) {
 	const m = /^CH-?(\d+)$/i.exec(String(raw).trim());
@@ -34,7 +30,7 @@ function normalizeChargeId(raw) {
 }
 
 // Rule-based reading of the charge. Used when there is no LLM, or the LLM call fails.
-function chargeFromRules(text) {
+function chargeFromRules(session, text) {
 	const ids = [...new Set([...text.matchAll(CHARGE_PATTERN)].map((m) => `CH-${m[1]}`))];
 
 	if (ids.length === 1) {
@@ -44,13 +40,13 @@ function chargeFromRules(text) {
 	if (ids.length > 1) {
 		return {
 			chargeId: null,
-			reply: `You mentioned ${ids.join(" and ")}. Which one should I refund?`,
+			reply: t(session).whichOfTwo(ids),
 		};
 	}
 
 	return {
 		chargeId: null,
-		reply: "I can help with a refund. Which charge is it? Charge IDs look like CH-101.",
+		reply: t(session).askCharge(),
 	};
 }
 
@@ -61,7 +57,7 @@ export async function triage(session, event) {
 	if (event.type !== "customer") {
 		return {
 			type: "ask",
-			text: "Hi, this is the FinchPay refund desk. Which charge would you like refunded?",
+			text: t(session).greeting(),
 		};
 	}
 
@@ -73,7 +69,7 @@ export async function triage(session, event) {
 
 	if (llmTriageEnabled()) {
 		try {
-			read = await askClaudeForCharge(customerTexts);
+			read = await askClaudeForCharge(customerTexts, session.lang);
 			traceLine(session, `Triage (Claude) read the request: ${JSON.stringify(read)}`);
 			// Do not trust the model's answer. Keep its charge only if the
 			// customer actually wrote that ID in one of their messages.
@@ -89,7 +85,7 @@ export async function triage(session, event) {
 					session,
 					`Triage rejected Claude's charge ${JSON.stringify(read.chargeId)}: customer never wrote it`,
 				);
-				read = chargeFromRules(event.text);
+				read = chargeFromRules(session, event.text);
 			} else {
 				read.chargeId = id;
 			}
@@ -105,7 +101,7 @@ export async function triage(session, event) {
 
 	// No key, or the Claude call failed.
 	if (!read) {
-		read = chargeFromRules(event.text);
+		read = chargeFromRules(session, event.text);
 		traceLine(session, `Triage (rules) read the request: ${JSON.stringify(read)}`);
 	}
 
@@ -113,15 +109,14 @@ export async function triage(session, event) {
 	if (!read.chargeId) {
 		return {
 			type: "ask",
-			text:
-				read.reply || "Which charge would you like refunded? Charge IDs look like CH-101.",
+			text: read.reply || t(session).whichCharge(),
 		};
 	}
 
 	if (!getCharge(read.chargeId)) {
 		return {
 			type: "ask",
-			text: `I couldn't find a charge called ${read.chargeId}. Please check the ID and send it again.`,
+			text: t(session).notFound(read.chargeId),
 		};
 	}
 
@@ -136,7 +131,7 @@ export function identity(session, event) {
 		// Always ask for a fresh code, even if the customer says they already verified.
 		return {
 			type: "ask",
-			text: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone.",
+			text: t(session).askCode(),
 		};
 	}
 
@@ -146,7 +141,7 @@ export function identity(session, event) {
 		if (codes.length === 0) {
 			return {
 				type: "ask",
-				text: "I need the 4 digit verification code to continue. Please type just the code.",
+				text: t(session).codeOnly(),
 			};
 		}
 
@@ -154,7 +149,7 @@ export function identity(session, event) {
 			// Do not guess which number is the code. Guessing wrong would cost an attempt.
 			return {
 				type: "ask",
-				text: `I see more than one 4 digit number (${codes.join(", ")}). Please send just the verification code.`,
+				text: t(session).manyCodes(codes),
 			};
 		}
 
@@ -177,26 +172,26 @@ export function identity(session, event) {
 		if (r.error === "invalid_code" && r.attemptsLeft > 0) {
 			return {
 				type: "ask",
-				text: `That code didn't match, so I couldn't verify your identity. You have ${r.attemptsLeft} ${r.attemptsLeft === 1 ? "try" : "tries"} left. Please enter the code again.`,
+				text: t(session).wrongCode(r.attemptsLeft),
 			};
 		}
 
 		if (r.error === "invalid_code") {
 			return {
 				type: "end",
-				text: `That code didn't match and there are no tries left. Verification for this charge is locked for ${LOCK_MINUTES} minutes. No refund was issued.`,
+				text: t(session).lockedNow(LOCK_MINUTES),
 			};
 		}
 
 		if (r.error === "locked") {
 			return {
 				type: "end",
-				text: `Verification for this charge is locked after too many wrong codes. Please try again in ${r.retryAfterMinutes} minutes. No refund was issued.`,
+				text: t(session).locked(r.retryAfterMinutes),
 			};
 		}
 	}
 
-	return { type: "end", text: "Something went wrong during verification. No refund was issued." };
+	return { type: "end", text: t(session).verifyError() };
 }
 
 export function refund(session, event) {
@@ -212,26 +207,26 @@ export function refund(session, event) {
 
 			return {
 				type: "end",
-				text: `Done. I refunded ${formatAmount(r.amountCents, r.currency)} for ${session.requestedCharge}. Your refund reference is ${r.reference}.`,
+				text: t(session).refunded(
+					formatAmount(session.lang, r.amountCents, r.currency),
+					session.requestedCharge,
+					r.reference,
+				),
 			};
 		}
 
-		const reasons = {
-			identity_not_verified: "your identity isn't verified in this chat",
-			already_refunded: "this charge has already been refunded",
-			unknown_charge: "I couldn't find that charge",
-		};
+		const reasons = t(session).reasons;
 
 		return {
 			type: "end",
-			text: `I couldn't issue the refund because ${reasons[r.error] ?? r.error}. No refund was issued.`,
+			text: t(session).refundFailed(reasons[r.error] ?? r.error),
 		};
 	}
 
 	// Refund has nothing to ask the customer, so any other event ends the session.
 	return {
 		type: "end",
-		text: "Your refund request is closed. Please start a new chat if you need anything else.",
+		text: t(session).closed(),
 	};
 }
 

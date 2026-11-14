@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 
 // One session object is shared by every role and every turn of a conversation.
 // The loop (src/loop.js) is the only code that changes currentRole and status.
-export function createSession() {
+export function createSession(lang = "en") {
 	return {
 		id: randomUUID(),
+		lang, // en | es | fr, the language agents reply in
 		createdAt: Date.now(),
 		currentRole: "triage", // triage | identity | refund
 		status: "active", // active | waiting | ended
