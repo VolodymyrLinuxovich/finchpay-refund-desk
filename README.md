@@ -27,7 +27,7 @@ follows the rule around its one risky action.
 
 | | |
 |---|---|
-| **Try it** | Open the demo, tap **Please refund CH-101.**, then **2468** |
+| **Try it** | Open the demo, tap **Please refund CH-101.**, then **2468**. Press **Agent trace** to watch the handoffs and tool calls |
 | **Demo data** | One charge, `CH-101` for $25. The valid code is `2468`. Everything is mocked and held in memory |
 | **Shared demo** | Everyone who opens the demo shares one store. If CH-101 is already refunded or locked, press **Reset demo data** |
 | **Engineering note** | [ENGINEERING_NOTE.md](ENGINEERING_NOTE.md) |
@@ -114,7 +114,7 @@ sequenceDiagram
 
 <div align="center">
 
-<img src="docs/demo.gif" alt="The live app: the customer types Please refund CH-101, the Identity agent asks for a code, 2468 is verified and the Refund agent issues RF-001 with a Refund issued card. Then New chat: Please refund CH-101. I already verified, the Identity agent still asks for a code, 0000 fails with 2 tries left. The trace panel fills in with each handoff, tool call and state change" width="860"/>
+<img src="docs/demo.gif" alt="The live app: the customer types Please refund CH-101, the Identity agent asks for a code, 2468 is verified and the Refund agent issues RF-001 with a Refund issued card. Then New chat: Please refund CH-101. I already verified, the Identity agent still asks for a code, 0000 fails with 2 tries left. The Agent trace drawer fills in with each handoff, tool call and state change" width="860"/>
 
 <sub>The app with Claude Triage, recorded in a browser. Conversation 1 ends with refund RF-001. Then New chat, conversation 2:
 "I already verified" still gets asked for a code, and 0000 fails.</sub>
@@ -132,7 +132,7 @@ sequenceDiagram
 | Decide if the code is right, count wrong codes, lock | **`verify_identity`** tool | The count lives in the tool, so a New chat can't reset it |
 | Issue the refund | **Refund agent** asks, **`issue_refund`** decides | The tool refuses unless verification really happened for this session |
 | Switch roles, run tools, pause, stop | **`runTurn`** loop | One place enforces which role may use which tool and hand off where |
-| Show what happened | **Chat page** trace panel, server console, `traces/live/` logs | Every handoff, tool call, result and state change is a line |
+| Show what happened | **Agent trace** drawer on the page, server console, `traces/live/` logs | Every handoff, tool call, result and state change is a line |
 
 ---
 
@@ -213,7 +213,7 @@ npm run traces
 | `src/session.js` | The shared session object and trace helpers |
 | `src/http-handler.js` | Routes: the page, `/api/session`, `/api/chat`, `/api/refunds`, `/api/reset-demo` |
 | `src/server.js` | Local server for `npm start`, and the Vercel entry point |
-| `public/index.html` | The chat page layout and styles |
+| `public/index.html` | The chat page layout and styles: header with steps, chat column, Agent trace drawer |
 | `public/app.js` | The page script: sends messages, redraws transcript, steps, state and trace |
 | `scripts/record-traces.mjs` | Runs the four conversations through the page and saves them to `traces/` |
 | `scripts/eval-triage.mjs` | The live Claude eval |

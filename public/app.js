@@ -14,6 +14,7 @@ const BIRD =
 let sessionId = null;
 let busy = false;
 let shownMessages = 0; // messages already on screen, so only new ones animate
+let shownTraceLines = 0; // trace lines already drawn, to know when new ones arrive
 const $ = (id) => document.getElementById(id);
 
 // Pick a color for a trace line from its wording (see the legend).
@@ -236,7 +237,19 @@ function render(data) {
 	}
 
 	nodes.push(typingNode());
-	t.replaceChildren(...nodes);
+
+	// Messages sit in a centered column inside the scrolling transcript.
+	const thread = el("div", "thread");
+
+	thread.append(...nodes);
+	t.replaceChildren(thread);
+
+	// New trace lines while the drawer is closed make the button's dot pulse.
+	if (data.trace.length > shownTraceLines && $("drawer").hidden && shownTraceLines > 0) {
+		pulse();
+	}
+
+	shownTraceLines = data.trace.length;
 
 	$("trace").replaceChildren(
 		...data.trace.map((raw) => {
@@ -264,7 +277,7 @@ function render(data) {
 	$("message").inputMode = s.currentRole === "identity" ? "numeric" : "text";
 	$("status").textContent = "";
 
-	if (!ended && window.matchMedia("(min-width: 961px)").matches) {
+	if (!ended && window.matchMedia("(min-width: 761px)").matches) {
 		$("message").focus();
 	}
 }
@@ -312,7 +325,10 @@ async function send(text) {
 	// Show the customer's message and the typing dots right away.
 	const t = $("transcript");
 
-	t.insertBefore(messageNode({ from: "customer", text: message }), $("typing"));
+	$("typing").parentNode.insertBefore(
+		messageNode({ from: "customer", text: message }),
+		$("typing"),
+	);
 	$("typing").classList.add("show");
 	t.scrollTop = t.scrollHeight;
 
@@ -327,6 +343,32 @@ async function send(text) {
 	}
 }
 
+// Open or close the trace drawer, and remember the choice in this browser.
+function setDrawer(open) {
+	$("drawer").hidden = !open;
+	$("trace-toggle").setAttribute("aria-pressed", String(open));
+	$("pulse").classList.remove("on");
+
+	if (open) {
+		$("trace").scrollTop = $("trace").scrollHeight;
+	}
+
+	try {
+		localStorage.setItem("finchpay-trace-open", open ? "1" : "0");
+	} catch {
+		// Storage can be blocked (private mode). The drawer still works.
+	}
+}
+
+// Restart the dot animation on the Agent trace button.
+function pulse() {
+	const dot = $("pulse");
+
+	dot.classList.remove("on");
+	void dot.offsetWidth; // forces a reflow so the animation plays again
+	dot.classList.add("on");
+}
+
 // Wire up the buttons, then open the first chat.
 $("composer").addEventListener("submit", (e) => {
 	e.preventDefault();
@@ -339,9 +381,19 @@ $("reset-demo").addEventListener("click", async () => {
 	$("status").textContent = "Demo data reset. CH-101 can be refunded again.";
 });
 
-// On phones, start with the trace folded so the chat comes first.
-if (window.matchMedia("(max-width: 960px)").matches) {
-	document.querySelector("details.trace-card").open = false;
+$("trace-toggle").addEventListener("click", () => setDrawer($("drawer").hidden));
+$("trace-close").addEventListener("click", () => setDrawer(false));
+document.addEventListener("keydown", (e) => {
+	if (e.key === "Escape" && !$("drawer").hidden) {
+		setDrawer(false);
+	}
+});
+
+// Start with the drawer as this browser left it. Closed the first time.
+try {
+	setDrawer(localStorage.getItem("finchpay-trace-open") === "1");
+} catch {
+	setDrawer(false);
 }
 
 newChat();

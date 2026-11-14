@@ -17,3 +17,6 @@ Every run of `npm run test:log` adds one row per suite. Full output of each run 
 | 11/13/26, 7:41 PM PT | 36f03e1 | unit + http + random | pass | 36 | 0 | 0.4s |  | eval with every case run 3 times | [output](test-results/2026-11-14T03-41-10/unit-http-random.txt) |
 | 11/13/26, 7:41 PM PT | 36f03e1 | browser e2e | pass | 7 | 0 | 3.1s |  | eval with every case run 3 times | [output](test-results/2026-11-14T03-41-10/browser-e2e.txt) |
 | 11/13/26, 7:41 PM PT | 36f03e1 | live Claude eval | pass | 60 | 0 | 129.4s | rule held 60/60 | eval with every case run 3 times | [output](test-results/2026-11-14T03-41-10/live-Claude-eval.txt) |
+| 11/13/26, 7:56 PM PT | 595c76f+changes | unit + http + random | pass | 36 | 0 | 0.4s |  | new layout: chat column, steps in header, trace drawer | [output](test-results/2026-11-14T03-56-37/unit-http-random.txt) |
+| 11/13/26, 7:56 PM PT | 595c76f+changes | browser e2e | pass | 7 | 0 | 3.1s |  | new layout: chat column, steps in header, trace drawer | [output](test-results/2026-11-14T03-56-37/browser-e2e.txt) |
+| 11/13/26, 7:56 PM PT | 595c76f+changes | live Claude eval | **FAIL** | 18 | 2 | 3.1s | rule held 20/20; failed: "Not CH-102, I mean CH-101", "CH-102 was fine. The problem is CH-101." | new layout: chat column, steps in header, trace drawer | [output](test-results/2026-11-14T03-56-37/live-Claude-eval.txt) |
