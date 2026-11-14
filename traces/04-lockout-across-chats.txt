@@ -1,0 +1,84 @@
+# Three wrong codes, then New chat with the right code
+# Recorded 2026-11-14T01:38:21.785Z from the chat page
+
+### First chat
+## Transcript
+FinchPay · Triage: Hi, this is the FinchPay refund desk. Which charge would you like refunded?
+You: Please refund CH-101.
+FinchPay · Identity: Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone.
+You: 1111
+FinchPay · Identity: That code didn't match, so I couldn't verify your identity. You have 2 tries left. Please enter the code again.
+You: 2222
+FinchPay · Identity: That code didn't match, so I couldn't verify your identity. You have 1 try left. Please enter the code again.
+You: 3333
+FinchPay · Identity: That code didn't match and there are no tries left. Verification for this charge is locked for 15 minutes. No refund was issued.
+
+## Final session state
+currentRole: "identity"
+status: "ended"
+requestedCharge: "CH-101"
+verified: false
+refundReference: null
+totalSteps: 8
+triageMode: "rules"
+
+## Trace
+new session (role Triage, verified false)
+Triage greets the customer, waiting for customer
+customer: "Please refund CH-101."
+Triage (rules) read the request: {"chargeId":"CH-101","reply":""}
+session.requestedCharge = "CH-101" (was null)
+Triage -> Identity (requested charge CH-101)
+Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."
+waiting for customer
+customer: "1111"
+Identity calls verify_identity({"code":"1111","chargeId":"CH-101"})
+verify_identity result: failure {"ok":false,"error":"invalid_code","attemptsLeft":2}
+Identity asks: "That code didn't match, so I couldn't verify your identity. You have 2 tries left. Please enter the code again."
+waiting for customer
+customer: "2222"
+Identity calls verify_identity({"code":"2222","chargeId":"CH-101"})
+verify_identity result: failure {"ok":false,"error":"invalid_code","attemptsLeft":1}
+Identity asks: "That code didn't match, so I couldn't verify your identity. You have 1 try left. Please enter the code again."
+waiting for customer
+customer: "3333"
+Identity calls verify_identity({"code":"3333","chargeId":"CH-101"})
+verify_identity result: failure {"ok":false,"error":"invalid_code","attemptsLeft":0}
+Identity replies: "That code didn't match and there are no tries left. Verification for this charge is locked for 15 minutes. No refund was issued."
+session ended (final response)
+
+### After pressing New chat
+
+## Transcript
+FinchPay · Triage: Hi, this is the FinchPay refund desk. Which charge would you like refunded?
+You: Please refund CH-101.
+FinchPay · Identity: Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone.
+You: 2468
+FinchPay · Identity: Verification for this charge is locked after too many wrong codes. Please try again in 15 minutes. No refund was issued.
+
+## Final session state
+currentRole: "identity"
+status: "ended"
+requestedCharge: "CH-101"
+verified: false
+refundReference: null
+totalSteps: 4
+triageMode: "rules"
+
+## Trace
+new session (role Triage, verified false)
+Triage greets the customer, waiting for customer
+customer: "Please refund CH-101."
+Triage (rules) read the request: {"chargeId":"CH-101","reply":""}
+session.requestedCharge = "CH-101" (was null)
+Triage -> Identity (requested charge CH-101)
+Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."
+waiting for customer
+customer: "2468"
+Identity calls verify_identity({"code":"2468","chargeId":"CH-101"})
+verify_identity result: failure {"ok":false,"error":"locked","retryAfterMinutes":15}
+Identity replies: "Verification for this charge is locked after too many wrong codes. Please try again in 15 minutes. No refund was issued."
+session ended (final response)
+
+## Refunds created during this conversation
+[]

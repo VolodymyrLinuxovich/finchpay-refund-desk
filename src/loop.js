@@ -2,7 +2,7 @@ import { AGENTS, ROLE_TOOLS, HANDOFFS } from "./agents.js";
 import { TOOLS } from "./tools.js";
 import { traceLine } from "./session.js";
 
-// Steps allowed while handling one customer message. A normal turn uses at most 3.
+// Steps allowed while handling one customer message. A normal turn uses at most 4.
 export const MAX_STEPS_PER_TURN = 8;
 // Steps allowed over the whole conversation, so a customer cannot keep it going forever.
 export const MAX_STEPS_PER_SESSION = 40;
@@ -23,7 +23,7 @@ function endSession(session, text, why) {
 
 // Handle one customer message. Runs agent steps until an agent asks the customer
 // something (pause), ends the session (stop), or a step limit is hit (stop).
-export function runTurn(session, customerText) {
+export async function runTurn(session, customerText) {
   const text = String(customerText ?? "").trim();
   if (session.status === "ended") {
     traceLine(session, "customer wrote after the session ended, nothing runs");
@@ -45,7 +45,7 @@ export function runTurn(session, customerText) {
     session.totalSteps++;
 
     const role = session.currentRole;
-    const action = AGENTS[role](session, event);
+    const action = await AGENTS[role](session, event);
 
     switch (action.type) {
       case "tool": {

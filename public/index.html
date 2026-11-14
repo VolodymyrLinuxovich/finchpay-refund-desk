@@ -26,13 +26,27 @@
   button:disabled { opacity: .5; cursor: default; }
   #state { padding: 10px 14px; font: 12px/1.6 ui-monospace, Menlo, monospace; border-bottom: 1px solid var(--line); }
   #trace { flex: 1; overflow-y: auto; margin: 0; padding: 10px 14px; height: 50vh; font: 12px/1.55 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  #trace .l { display: block; padding: 1px 0 1px 8px; border-left: 3px solid transparent; }
+  #trace .handoff { border-color: #7c3aed; color: #5b21b6; font-weight: 600; }
+  #trace .tool { border-color: #2563eb; color: #1e40af; }
+  #trace .ok { border-color: #16a34a; color: #166534; }
+  #trace .fail { border-color: #dc2626; color: #991b1b; }
+  #trace .state { border-color: #d97706; color: #92400e; }
+  #trace .wait { border-color: #6b7280; color: #374151; font-style: italic; }
+  #trace .end { border-color: #111827; color: #111827; font-weight: 600; }
+  #trace .customer { color: #6b7280; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
   .status { font-size: 13px; color: var(--muted); padding: 0 14px 10px; }
 </style>
 </head>
 <body>
 <header>
   <h1>FinchPay Refund Desk</h1>
-  <button id="new-chat" class="secondary" type="button">New chat</button>
+  <div style="display:flex;gap:8px">
+    <button id="reset-demo" class="secondary" type="button" title="Clears mock refunds and code lockouts">Reset demo data</button>
+    <button id="new-chat" type="button">New chat</button>
+  </div>
 </header>
 <main>
   <section>
@@ -49,12 +63,33 @@
     <div id="state"></div>
     <h2>Trace</h2>
     <pre id="trace"></pre>
+    <div class="legend">
+      <span><i style="background:#7c3aed"></i>handoff</span>
+      <span><i style="background:#2563eb"></i>tool call</span>
+      <span><i style="background:#16a34a"></i>success</span>
+      <span><i style="background:#dc2626"></i>failure or blocked</span>
+      <span><i style="background:#d97706"></i>state change</span>
+      <span><i style="background:#6b7280"></i>waiting</span>
+      <span><i style="background:#111827"></i>ended</span>
+    </div>
   </section>
 </main>
 <script>
   const ROLE = { triage: "Triage", identity: "Identity", refund: "Refund" };
   let sessionId = null;
   const $ = (id) => document.getElementById(id);
+
+  function kind(line) {
+    if (/blocked|rejected|failed|failure/.test(line)) return "fail";
+    if (/ -> /.test(line)) return "handoff";
+    if (/result: success/.test(line)) return "ok";
+    if (/ calls |^Triage \(/.test(line)) return "tool";
+    if (/^session\.\w+ = /.test(line)) return "state";
+    if (/waiting for customer/.test(line)) return "wait";
+    if (/^session ended|after the session ended/.test(line)) return "end";
+    if (/^customer: /.test(line)) return "customer";
+    return "";
+  }
 
   function render(data) {
     sessionId = data.sessionId;
@@ -72,7 +107,13 @@
     const s = data.state;
     $("state").textContent = Object.entries(s).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n");
     $("state").style.whiteSpace = "pre";
-    $("trace").textContent = data.trace.map((l) => l.replace(/^\S+\s+/, "")).join("\n");
+    $("trace").replaceChildren(...data.trace.map((raw) => {
+      const line = raw.replace(/^\S+\s+/, "");
+      const span = document.createElement("span");
+      span.className = "l " + kind(line);
+      span.textContent = line;
+      return span;
+    }));
     $("trace").scrollTop = $("trace").scrollHeight;
     const ended = s.status === "ended";
     $("message").disabled = ended;
@@ -84,6 +125,11 @@
   async function post(url, body) {
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
     const data = await res.json();
+    if (res.status === 404 && url === "/api/chat") {
+      // The server lost this session (restart or a new Vercel instance). Start over cleanly.
+      await newChat();
+      throw new Error(data.error);
+    }
     if (!res.ok) throw new Error(data.error || "Request failed");
     return data;
   }
@@ -108,6 +154,11 @@
   });
 
   $("new-chat").addEventListener("click", newChat);
+  $("reset-demo").addEventListener("click", async () => {
+    await post("/api/reset-demo");
+    await newChat();
+    $("status").textContent = "Demo data reset. CH-101 can be refunded again.";
+  });
   newChat();
 </script>
 </body>

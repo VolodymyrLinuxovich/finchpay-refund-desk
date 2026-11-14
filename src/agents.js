@@ -1,7 +1,8 @@
-import { getCharge } from "./tools.js";
-import { setState } from "./session.js";
+import { getCharge, LOCK_MINUTES } from "./tools.js";
+import { setState, traceLine } from "./session.js";
+import { llmTriageEnabled, askClaudeForCharge } from "./llm-triage.js";
 
-// Each agent is a plain function: (session, event) -> action.
+// Each agent is a function: (session, event) -> action (or a Promise of one).
 //
 // Events the loop sends:
 //   { type: "customer", text }          a new customer message
@@ -14,34 +15,72 @@ import { setState } from "./session.js";
 //   { type: "ask", text }               loop replies and pauses for the customer
 //   { type: "end", text }               loop replies and closes the session
 //
-// Agents may write their own fields in session state (requestedCharge, verified,
-// verifyAttempts). They never change currentRole or status. The loop owns those.
+// Agents may write their own fields in session state (requestedCharge, verified).
+// They never change currentRole or status. The loop owns those.
 
-export const MAX_VERIFY_ATTEMPTS = 3;
-
-const CHARGE_PATTERN = /\bCH-?(\d+)\b/i;
-const CODE_PATTERN = /\b(\d{4})\b/;
+const CHARGE_PATTERN = /\bCH-?(\d+)\b/gi;
+const CODE_PATTERN = /\b\d{4}\b/g;
 
 function formatAmount(cents, currency = "USD") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 }
 
-export function triage(session, event) {
+function normalizeChargeId(raw) {
+  const m = /^CH-?(\d+)$/i.exec(String(raw).trim());
+  return m ? `CH-${m[1]}` : null;
+}
+
+// Rule-based reading of the charge. Used when there is no LLM, or the LLM call fails.
+function chargeFromRules(text) {
+  const ids = [...new Set([...text.matchAll(CHARGE_PATTERN)].map((m) => `CH-${m[1]}`))];
+  if (ids.length === 1) return { chargeId: ids[0], reply: "" };
+  if (ids.length > 1) {
+    return { chargeId: null, reply: `You mentioned ${ids.join(" and ")}. Which one should I refund?` };
+  }
+  return { chargeId: null, reply: "I can help with a refund. Which charge is it? Charge IDs look like CH-101." };
+}
+
+// Triage reads which charge the customer wants and hands off to Identity.
+// With an API key, Claude reads the message. Its answer is untrusted: the charge
+// must exist and must appear in what the customer actually wrote.
+export async function triage(session, event) {
   if (event.type !== "customer") {
     return { type: "ask", text: "Hi, this is the FinchPay refund desk. Which charge would you like refunded?" };
   }
-  const match = event.text.match(CHARGE_PATTERN);
-  if (!match) {
-    return { type: "ask", text: "I can help with a refund. Which charge is it? Charge IDs look like CH-101." };
+  const customerTexts = session.messages.filter((m) => m.from === "customer").map((m) => m.text);
+
+  let read = null;
+  if (llmTriageEnabled()) {
+    try {
+      read = await askClaudeForCharge(customerTexts);
+      traceLine(session, `Triage (Claude) read the request: ${JSON.stringify(read)}`);
+      const id = read.chargeId && normalizeChargeId(read.chargeId);
+      const written = new Set(customerTexts.flatMap((t) => [...t.matchAll(CHARGE_PATTERN)].map((m) => `CH-${m[1]}`)));
+      if (read.chargeId && (!id || !written.has(id))) {
+        traceLine(session, `Triage rejected Claude's charge ${JSON.stringify(read.chargeId)}: customer never wrote it`);
+        read = chargeFromRules(event.text);
+      } else {
+        read.chargeId = id;
+      }
+    } catch (err) {
+      traceLine(session, `Triage (Claude) failed: ${String(err.message).slice(0, 140)}. Using rule-based triage`);
+      read = null;
+    }
   }
-  const chargeId = `CH-${match[1]}`;
-  if (!getCharge(chargeId)) {
-    return { type: "ask", text: `I couldn't find a charge called ${chargeId}. Please check the ID and send it again.` };
+  if (!read) {
+    read = chargeFromRules(event.text);
+    traceLine(session, `Triage (rules) read the request: ${JSON.stringify(read)}`);
   }
-  // Anything else in the message ("I already verified", a code, etc.) is ignored here.
-  // Triage only records which charge the customer wants.
-  setState(session, "requestedCharge", chargeId);
-  return { type: "handoff", to: "identity", note: `requested charge ${chargeId}` };
+
+  if (!read.chargeId) {
+    return { type: "ask", text: read.reply || "Which charge would you like refunded? Charge IDs look like CH-101." };
+  }
+  if (!getCharge(read.chargeId)) {
+    return { type: "ask", text: `I couldn't find a charge called ${read.chargeId}. Please check the ID and send it again.` };
+  }
+  // Anything else in the message ("I already verified", a code, instructions) is ignored here.
+  setState(session, "requestedCharge", read.chargeId);
+  return { type: "handoff", to: "identity", note: `requested charge ${read.chargeId}` };
 }
 
 export function identity(session, event) {
@@ -54,30 +93,41 @@ export function identity(session, event) {
   }
 
   if (event.type === "customer") {
-    const match = event.text.match(CODE_PATTERN);
-    if (!match) {
+    const codes = [...new Set(event.text.match(CODE_PATTERN) ?? [])];
+    if (codes.length === 0) {
       return { type: "ask", text: "I need the 4 digit verification code to continue. Please type just the code." };
     }
-    setState(session, "verifyAttempts", session.verifyAttempts + 1);
-    return { type: "tool", tool: "verify_identity", args: { code: match[1] } };
+    if (codes.length > 1) {
+      // Do not guess which number is the code. Guessing wrong would cost an attempt.
+      return { type: "ask", text: `I see more than one 4 digit number (${codes.join(", ")}). Please send just the verification code.` };
+    }
+    return { type: "tool", tool: "verify_identity", args: { code: codes[0], chargeId: session.requestedCharge } };
   }
 
   if (event.type === "tool_result" && event.tool === "verify_identity") {
-    if (event.result.ok) {
+    const r = event.result;
+    if (r.ok) {
       setState(session, "verified", true);
       return { type: "handoff", to: "refund", note: "identity verified" };
     }
-    const left = MAX_VERIFY_ATTEMPTS - session.verifyAttempts;
-    if (left > 0) {
+    if (r.error === "invalid_code" && r.attemptsLeft > 0) {
       return {
         type: "ask",
-        text: `That code didn't match, so I couldn't verify your identity. You have ${left} ${left === 1 ? "try" : "tries"} left. Please enter the code again.`,
+        text: `That code didn't match, so I couldn't verify your identity. You have ${r.attemptsLeft} ${r.attemptsLeft === 1 ? "try" : "tries"} left. Please enter the code again.`,
       };
     }
-    return {
-      type: "end",
-      text: "That code didn't match and there are no tries left, so I couldn't verify your identity. No refund was issued. Please start a new chat or contact FinchPay support.",
-    };
+    if (r.error === "invalid_code") {
+      return {
+        type: "end",
+        text: `That code didn't match and there are no tries left. Verification for this charge is locked for ${LOCK_MINUTES} minutes. No refund was issued.`,
+      };
+    }
+    if (r.error === "locked") {
+      return {
+        type: "end",
+        text: `Verification for this charge is locked after too many wrong codes. Please try again in ${r.retryAfterMinutes} minutes. No refund was issued.`,
+      };
+    }
   }
 
   return { type: "end", text: "Something went wrong during verification. No refund was issued." };

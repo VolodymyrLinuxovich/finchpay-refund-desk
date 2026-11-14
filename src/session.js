@@ -9,7 +9,6 @@ export function createSession() {
     status: "active", // active | waiting | ended
     requestedCharge: null, // set by Triage, e.g. "CH-101"
     verified: false, // set by Identity, only after verify_identity succeeds
-    verifyAttempts: 0,
     refundReference: null,
     totalSteps: 0,
     messages: [], // [{ from: "customer" | "agent", role?, text }]
