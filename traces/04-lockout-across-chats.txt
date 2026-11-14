@@ -1,5 +1,5 @@
 # Three wrong codes, then New chat with the right code
-# Recorded 2026-11-14T02:17:58.803Z from the chat page
+# Recorded 2026-11-14T04:44:00.523Z from the chat page
 
 ### First chat
 ## Transcript
@@ -14,12 +14,12 @@ You: 3333
 FinchPay · Identity agent: That code didn't match and there are no tries left. Verification for this charge is locked for 15 minutes. No refund was issued.
 
 ## Final session state
-Current agent: Identity agent
-Status: ended
-Requested charge: CH-101
+Agent: Identity
 Verified: no
-Refund reference: none
-Steps used: 8
+Charge: CH-101
+Reference: none
+Status: ended
+Steps: 8
 Triage uses Claude
 
 ## Trace
@@ -57,12 +57,12 @@ You: 2468
 FinchPay · Identity agent: Verification for this charge is locked after too many wrong codes. Please try again in 15 minutes. No refund was issued.
 
 ## Final session state
-Current agent: Identity agent
-Status: ended
-Requested charge: CH-101
+Agent: Identity
 Verified: no
-Refund reference: none
-Steps used: 4
+Charge: CH-101
+Reference: none
+Status: ended
+Steps: 4
 Triage uses Claude
 
 ## Trace

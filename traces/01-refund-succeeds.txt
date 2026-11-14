@@ -1,5 +1,5 @@
 # Refund succeeds
-# Recorded 2026-11-14T02:17:52.170Z from the chat page
+# Recorded 2026-11-14T04:43:53.907Z from the chat page
 
 ## Transcript
 FinchPay · Triage agent: Hi, this is the FinchPay refund desk. Which charge would you like refunded?
@@ -9,12 +9,12 @@ You: 2468
 FinchPay · Refund agent: Done. I refunded $25.00 for CH-101. Your refund reference is RF-001.
 
 ## Final session state
-Current agent: Refund agent
-Status: ended
-Requested charge: CH-101
+Agent: Refund
 Verified: yes
-Refund reference: RF-001
-Steps used: 6
+Charge: CH-101
+Reference: RF-001
+Status: ended
+Steps: 6
 Triage uses Claude
 
 ## Trace
@@ -43,7 +43,7 @@ session ended (final response)
     "reference": "RF-001",
     "chargeId": "CH-101",
     "amountCents": 2500,
-    "sessionId": "67953742-4828-40e2-be81-9908d2e4e43a",
-    "createdAt": "2026-11-14T02:17:52.139Z"
+    "sessionId": "4f8dce27-0024-4dea-85be-68dca60fc721",
+    "createdAt": "2026-11-14T04:43:53.876Z"
   }
 ]

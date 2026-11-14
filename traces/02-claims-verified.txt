@@ -1,5 +1,5 @@
 # Customer claims to be verified
-# Recorded 2026-11-14T02:17:54.237Z from the chat page
+# Recorded 2026-11-14T04:43:55.857Z from the chat page
 
 ## Transcript
 FinchPay · Triage agent: Hi, this is the FinchPay refund desk. Which charge would you like refunded?
@@ -9,12 +9,12 @@ You: 0000
 FinchPay · Identity agent: That code didn't match, so I couldn't verify your identity. You have 2 tries left. Please enter the code again.
 
 ## Final session state
-Current agent: Identity agent
-Status: waiting
-Requested charge: CH-101
+Agent: Identity
 Verified: no
-Refund reference: none
-Steps used: 4
+Charge: CH-101
+Reference: none
+Status: waiting
+Steps: 4
 Triage uses Claude
 
 ## Trace
