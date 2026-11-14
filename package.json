@@ -1,0 +1,18 @@
+{
+  "name": "finchpay-refund-desk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chat refund agent for a fictional fintech. Triage, Identity and Refund hand off in sequence; issue_refund only runs after verify_identity succeeds.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "TRACE_CONSOLE=0 node --test test/",
+    "traces": "node scripts/record-traces.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

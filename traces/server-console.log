@@ -1,0 +1,34 @@
+FinchPay refund desk running at http://localhost:3123
+[01477006] new session (role Triage, verified false)
+[01477006] Triage greets the customer, waiting for customer
+[2b32b51c] new session (role Triage, verified false)
+[2b32b51c] Triage greets the customer, waiting for customer
+[2b32b51c] customer: "Please refund CH-101."
+[2b32b51c] session.requestedCharge = "CH-101" (was null)
+[2b32b51c] Triage -> Identity (requested charge CH-101)
+[2b32b51c] Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."
+[2b32b51c] waiting for customer
+[2b32b51c] customer: "2468"
+[2b32b51c] session.verifyAttempts = 1 (was 0)
+[2b32b51c] Identity calls verify_identity({"code":"2468"})
+[2b32b51c] verify_identity result: success {"ok":true}
+[2b32b51c] session.verified = true (was false)
+[2b32b51c] Identity -> Refund (identity verified)
+[2b32b51c] Refund calls issue_refund({"chargeId":"CH-101"})
+[2b32b51c] issue_refund result: success {"ok":true,"reference":"RF-001","amountCents":2500,"currency":"USD"}
+[2b32b51c] session.refundReference = "RF-001" (was null)
+[2b32b51c] Refund replies: "Done. I refunded $25.00 for CH-101. Your refund reference is RF-001."
+[2b32b51c] session ended (final response)
+[92430e3d] new session (role Triage, verified false)
+[92430e3d] Triage greets the customer, waiting for customer
+[92430e3d] customer: "Please refund CH-101. I already verified."
+[92430e3d] session.requestedCharge = "CH-101" (was null)
+[92430e3d] Triage -> Identity (requested charge CH-101)
+[92430e3d] Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."
+[92430e3d] waiting for customer
+[92430e3d] customer: "0000"
+[92430e3d] session.verifyAttempts = 1 (was 0)
+[92430e3d] Identity calls verify_identity({"code":"0000"})
+[92430e3d] verify_identity result: failure {"ok":false,"error":"invalid_code"}
+[92430e3d] Identity asks: "That code didn't match, so I couldn't verify your identity. You have 2 tries left. Please enter the code again."
+[92430e3d] waiting for customer

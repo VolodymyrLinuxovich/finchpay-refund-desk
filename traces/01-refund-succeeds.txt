@@ -1,0 +1,38 @@
+# Refund succeeds
+# Recorded 2026-11-14T01:23:05.664Z from the chat page at http://localhost:3123
+
+## Transcript
+FinchPay · Triage: Hi, this is the FinchPay refund desk. Which charge would you like refunded?
+You: Please refund CH-101.
+FinchPay · Identity: Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone.
+You: 2468
+FinchPay · Refund: Done. I refunded $25.00 for CH-101. Your refund reference is RF-001.
+
+## Final session state
+currentRole: "refund"
+status: "ended"
+requestedCharge: "CH-101"
+verified: true
+verifyAttempts: 1
+refundReference: "RF-001"
+totalSteps: 6
+
+## Trace
+new session (role Triage, verified false)
+Triage greets the customer, waiting for customer
+customer: "Please refund CH-101."
+session.requestedCharge = "CH-101" (was null)
+Triage -> Identity (requested charge CH-101)
+Identity asks: "Before I refund this charge I need to verify your identity. Please enter the 4 digit code we sent to your phone."
+waiting for customer
+customer: "2468"
+session.verifyAttempts = 1 (was 0)
+Identity calls verify_identity({"code":"2468"})
+verify_identity result: success {"ok":true}
+session.verified = true (was false)
+Identity -> Refund (identity verified)
+Refund calls issue_refund({"chargeId":"CH-101"})
+issue_refund result: success {"ok":true,"reference":"RF-001","amountCents":2500,"currency":"USD"}
+session.refundReference = "RF-001" (was null)
+Refund replies: "Done. I refunded $25.00 for CH-101. Your refund reference is RF-001."
+session ended (final response)
