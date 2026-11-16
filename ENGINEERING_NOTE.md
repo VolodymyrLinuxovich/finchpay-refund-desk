@@ -33,4 +33,10 @@ Other weak spots. Each chat travels as a signed token, so it survives a new Verc
 
 ## AI tools
 
-I used Claude Code to write the code, tests and trace script. I checked the output by ...
+I used Claude Code to write the code, tests and trace script. I checked the output by reading the parts that guard money myself. That means the loop, the two tools and the Identity and Refund agents. The walkthrough of the 2468 turn above comes from that reading, with line numbers I checked.
+
+I did not take a passing test as proof on its own. For the refund rule I asked for tests that try to break it. One sets `session.verified` by hand. Another hands off to Refund without a code. Both must end with no refund.
+
+The Claude part cannot be checked by reading. So there is a live eval that sends 20 messages to the real model, including prompt injections and messages that name two charges. Every run is logged in `TEST_LOG.md` with its full output, failures included. The refund rule held in every run. The failures were Triage picking the wrong charge or answering in a way the eval did not expect. One was "Refund CH101 please", which Triage missed because the ID had no dash. I fixed each one and wrote down why next to the run.
+
+Last, I watched the browser traces and used the live demo myself. That is how I found things the tests missed, like a chat being lost when Vercel started a new instance.
